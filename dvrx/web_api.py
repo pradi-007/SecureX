@@ -87,7 +87,12 @@ def verify_case(case_id: str, examiner: str | None = None, cases_dir: str | None
     return {"status": "ok", "report": report.to_dict()}
 
 
-def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = None) -> Dict[str, Any]:
+def inspect_evidence(
+    case_id: str,
+    evidence_id: str,
+    selected_vendor: str | None = None,
+    cases_dir: str | None = None,
+) -> Dict[str, Any]:
     manager = get_manager(cases_dir)
     case = manager.load_case(case_id)
     evidence_list = manager.list_evidence(case_id)
@@ -222,7 +227,7 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
     if exists and src_path.is_file():
         try:
             from dvrx.parsers.detector import detect_and_parse_evidence
-            vendor_analysis = detect_and_parse_evidence(src_path)
+            vendor_analysis = detect_and_parse_evidence(src_path, selected_vendor)
         except Exception as e:
             vendor_analysis = {"status": "error", "message": str(e)}
 
@@ -308,7 +313,12 @@ def main():
         elif cmd == "verify_case":
             res = verify_case(payload["case_id"], payload.get("examiner"), cases_dir)
         elif cmd == "inspect_evidence":
-            res = inspect_evidence(payload["case_id"], payload["evidence_id"], cases_dir)
+            res = inspect_evidence(
+                payload["case_id"],
+                payload["evidence_id"],
+                selected_vendor=payload.get("selected_vendor"),
+                cases_dir=cases_dir,
+            )
         elif cmd == "analyze_vendor":
             res = analyze_vendor(payload["case_id"], payload["evidence_id"], payload.get("selected_vendor"), cases_dir)
         elif cmd == "list_supported_vendors":
