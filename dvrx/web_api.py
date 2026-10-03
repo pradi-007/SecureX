@@ -218,6 +218,14 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
         ),
     }
 
+    vendor_analysis = None
+    if exists and src_path.is_file():
+        try:
+            from dvrx.parsers.detector import detect_and_parse_evidence
+            vendor_analysis = detect_and_parse_evidence(src_path)
+        except Exception as e:
+            vendor_analysis = {"status": "error", "message": str(e)}
+
     return {
         "status": "ok",
         "evidence": target_ev.to_dict(),
@@ -228,6 +236,48 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
         "custody_entries": related_entries,
         "certificate_65b": certificate,
         "section_65b_certificate": certificate,
+        "vendor_analysis": vendor_analysis,
+    }
+
+
+def analyze_vendor(
+    case_id: str,
+    evidence_id: str,
+    selected_vendor: str | None = None,
+    cases_dir: str | None = None,
+) -> Dict[str, Any]:
+    manager = get_manager(cases_dir)
+    case = manager.load_case(case_id)
+    evidence_list = manager.list_evidence(case_id)
+    target_ev = next((e for e in evidence_list if e.evidence_id == evidence_id), None)
+    if not target_ev:
+        raise ValueError(f"Evidence '{evidence_id}' not found in case '{case_id}'.")
+
+    src_path = Path(target_ev.source_path)
+    if not src_path.exists():
+        candidate1 = Path(case.case_dir) / "evidence" / src_path.name
+        if candidate1.exists():
+            src_path = candidate1
+        else:
+            candidate2 = Path.cwd() / "evidence" / src_path.name
+            if candidate2.exists():
+                src_path = candidate2
+
+    from dvrx.parsers.detector import detect_and_parse_evidence
+    analysis = detect_and_parse_evidence(src_path, selected_vendor=selected_vendor)
+    return {
+        "status": "ok",
+        "case_id": case_id,
+        "evidence_id": evidence_id,
+        "analysis": analysis,
+    }
+
+
+def list_supported_vendors() -> Dict[str, Any]:
+    from dvrx.parsers.detector import get_all_supported_vendors
+    return {
+        "status": "ok",
+        "vendors": get_all_supported_vendors(),
     }
 
 
@@ -259,6 +309,10 @@ def main():
             res = verify_case(payload["case_id"], payload.get("examiner"), cases_dir)
         elif cmd == "inspect_evidence":
             res = inspect_evidence(payload["case_id"], payload["evidence_id"], cases_dir)
+        elif cmd == "analyze_vendor":
+            res = analyze_vendor(payload["case_id"], payload["evidence_id"], payload.get("selected_vendor"), cases_dir)
+        elif cmd == "list_supported_vendors":
+            res = list_supported_vendors()
         else:
             res = {"status": "error", "message": f"Unknown command: {cmd}"}
         print(json.dumps(res))

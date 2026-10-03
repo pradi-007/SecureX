@@ -7,8 +7,16 @@ export async function GET(req: NextRequest) {
   const evidenceId = searchParams.get('evidence_id');
 
   try {
-    if (caseId && evidenceId) {
-      const data = await runDvrxBridge('inspect_evidence', { case_id: caseId, evidence_id: evidenceId });
+    if (searchParams.get('action') === 'vendors') {
+      const data = await runDvrxBridge('list_supported_vendors');
+      return NextResponse.json(data);
+    } else if (caseId && evidenceId) {
+      const vendor = searchParams.get('vendor');
+      const data = await runDvrxBridge('inspect_evidence', {
+        case_id: caseId,
+        evidence_id: evidenceId,
+        selected_vendor: vendor || undefined,
+      });
       return NextResponse.json(data);
     } else if (caseId) {
       const data = await runDvrxBridge('get_case', { case_id: caseId });
@@ -56,6 +64,7 @@ export async function POST(req: NextRequest) {
       const data = await runDvrxBridge('inspect_evidence', {
         case_id: body.case_id,
         evidence_id: body.evidence_id,
+        selected_vendor: body.selected_vendor,
       });
       return NextResponse.json(data);
     } else if (action === 'generate_sample_evidence') {
@@ -92,6 +101,16 @@ export async function POST(req: NextRequest) {
         examiner: body.examiner,
         notes: body.notes || `Generated synthetic surveillance sample (${filename})`,
       });
+      return NextResponse.json(data);
+    } else if (action === 'analyze_vendor') {
+      const data = await runDvrxBridge('analyze_vendor', {
+        case_id: body.case_id,
+        evidence_id: body.evidence_id,
+        selected_vendor: body.selected_vendor,
+      });
+      return NextResponse.json(data);
+    } else if (action === 'list_supported_vendors') {
+      const data = await runDvrxBridge('list_supported_vendors');
       return NextResponse.json(data);
     } else {
       return NextResponse.json({ status: 'error', message: `Unknown action: ${action}` }, { status: 400 });
