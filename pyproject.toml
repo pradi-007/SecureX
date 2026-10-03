@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dvrx"
+version = "0.1.0"
+description = "A vendor-agnostic DVR/NVR forensic analysis tool"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "DVRX Forensic Team"}
+]
+keywords = ["forensics", "dvr", "nvr", "digital-forensics", "video-forensics"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pytest>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+dvrx = "dvrx.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dvrx*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
