@@ -27,6 +27,12 @@ import {
   MapPin,
   BadgeCheck,
   Award,
+  Eye,
+  Binary,
+  FileCode,
+  X,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface CaseSummary {
@@ -83,7 +89,7 @@ interface CaseDetail {
   };
 }
 
-export const INDIAN_SOLVED_CASES = [
+const INDIAN_SOLVED_CASES = [
   {
     id: 'CASE-DEL-NIRBHAYA-2012',
     name: '2012 Delhi Nirbhaya Case',
@@ -174,6 +180,13 @@ export default function ForensicApp() {
   const [acqExaminer, setAcqExaminer] = useState('');
   const [acqNotes, setAcqNotes] = useState('');
   const [acquiring, setAcquiring] = useState(false);
+
+  // Deep Forensic Evidence Inspector Modal State
+  const [inspectModalOpen, setInspectModalOpen] = useState(false);
+  const [inspectData, setInspectData] = useState<any>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectTab, setInspectTab] = useState<'hex' | 'header' | 'cert' | 'custody'>('hex');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const isIndianCase = (id: string) => {
     return (
@@ -365,6 +378,42 @@ export default function ForensicApp() {
     } finally {
       setVerifying(false);
     }
+  };
+
+  // Deep Forensic Evidence Stream Inspection Handler
+  const handleInspectEvidence = async (caseId: string, evidenceId?: string) => {
+    setInspectLoading(true);
+    setInspectModalOpen(true);
+    try {
+      let targetEvd = evidenceId;
+      if (!targetEvd) {
+        if (activeCase?.evidence && activeCase.evidence.length > 0) {
+          targetEvd = activeCase.evidence[0].evidence_id;
+        } else {
+          targetEvd = 'EVD-001';
+        }
+      }
+      const url = `/api/dvrx?case_id=${encodeURIComponent(caseId)}&evidence_id=${encodeURIComponent(targetEvd)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'ok' && data.inspection) {
+        setInspectData(data.inspection);
+      } else {
+        alert(data.message || 'Evidence stream inspection failed: evidence file not found');
+        setInspectModalOpen(false);
+      }
+    } catch (err: any) {
+      alert(`Error during evidence inspection: ${err.message}`);
+      setInspectModalOpen(false);
+    } finally {
+      setInspectLoading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   const scrollToCases = () => {
@@ -608,6 +657,15 @@ export default function ForensicApp() {
                     <span>Registered Evidence Items ({activeCase.evidence.length})</span>
                   </div>
                   <div className="flex gap-2.5">
+                    {activeCase.evidence.length > 0 && (
+                      <button
+                        onClick={() => handleInspectEvidence(activeCase.case.case_id, activeCase.evidence[0].evidence_id)}
+                        className="px-4 py-2 rounded-xl liquid-glass text-orange-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:border-orange-400/50 hover:text-white transition-all shadow"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-orange-400" />
+                        Inspect Stream
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowAcquire(true)}
                       className="px-4 py-2 rounded-xl liquid-glass-secondary-button text-xs text-slate-200 font-medium flex items-center gap-1.5 cursor-pointer shadow"
@@ -677,6 +735,7 @@ export default function ForensicApp() {
                           <th className="py-3 px-4">SHA-256 Digest</th>
                           <th className="py-3 px-4">MD5 Digest</th>
                           <th className="py-3 px-4">Source Path</th>
+                          <th className="py-3 px-4 text-right">Deep Inspection</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-slate-300">
@@ -690,6 +749,15 @@ export default function ForensicApp() {
                             <td className="py-3 px-4 text-[11px] text-slate-400">{ev.md5}</td>
                             <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={ev.source_path}>
                               {ev.source_path}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                onClick={() => handleInspectEvidence(activeCase.case.case_id, ev.evidence_id)}
+                                className="px-3 py-1.5 rounded-xl liquid-glass-button text-black text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow hover:scale-105 transition-all"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Inspect
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -817,11 +885,11 @@ export default function ForensicApp() {
                   onClick={() => {
                     setSelectedCaseId(ic.id);
                     setCaseFilter('indian');
-                    scrollToCases();
+                    handleInspectEvidence(ic.id, 'EVD-001');
                   }}
-                  className="px-4 py-2 rounded-xl liquid-glass-button text-black font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow"
+                  className="px-4 py-2 rounded-xl liquid-glass-button text-black font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow hover:scale-105 transition-all"
                 >
-                  <FolderOpen className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5" />
                   <span>Inspect &amp; Verify Evidence</span>
                 </button>
               </div>
@@ -1115,6 +1183,353 @@ export default function ForensicApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Deep Forensic Evidence Inspector Modal */}
+      {inspectModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+          <div className="liquid-glass border-white/20 rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-6 pb-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                  <Binary className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-white tracking-tight">
+                      Deep Forensic Evidence Inspector
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      READ-ONLY (rb)
+                    </span>
+                    {inspectData?.section_65b_certificate && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40 flex items-center gap-1">
+                        <Scale className="w-3 h-3" />
+                        SEC. 65B CERTIFIED
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-300/80 font-mono mt-0.5">
+                    Case: <span className="text-orange-300">{inspectData?.case_id || 'Loading...'}</span> · Evidence ID: <span className="text-white font-bold">{inspectData?.evidence_id}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {inspectLoading ? (
+              <div className="p-16 flex flex-col items-center justify-center gap-3 text-slate-300">
+                <RefreshCw className="w-7 h-7 text-orange-400 animate-spin" />
+                <span className="text-xs font-mono">Streaming 512 bytes in read-only binary mode...</span>
+              </div>
+            ) : inspectData ? (
+              <>
+                {/* Evidence Metadata Ribbon */}
+                <div className="px-6 py-3 bg-black/40 border-b border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                  <div className="flex items-center gap-2 max-w-xl truncate text-slate-300">
+                    <HardDrive className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+                    <span className="truncate" title={inspectData.file_path}>Path: {inspectData.file_path}</span>
+                    <button
+                      onClick={() => copyToClipboard(inspectData.file_path, 'path')}
+                      className="text-slate-400 hover:text-white ml-1 cursor-pointer"
+                      title="Copy Path"
+                    >
+                      {copiedField === 'path' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-4 text-[11px] text-slate-300">
+                    <div>
+                      Size: <span className="text-white font-bold">{inspectData.file_size?.toLocaleString()} B</span> ({(inspectData.file_size / 1024).toFixed(1)} KB)
+                    </div>
+                    <div>
+                      Inspected: <span className="text-emerald-400 font-bold">{inspectData.bytes_inspected} bytes</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inspector Tabs Header */}
+                <div className="px-6 pt-3 flex items-center gap-2 border-b border-white/10 overflow-x-auto">
+                  <button
+                    onClick={() => setInspectTab('hex')}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
+                      inspectTab === 'hex'
+                        ? 'liquid-glass-accent text-orange-200 border-orange-400/50 font-bold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Binary className="w-3.5 h-3.5" />
+                    <span>Raw Byte Stream (512B Hex)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setInspectTab('header')}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
+                      inspectTab === 'header'
+                        ? 'liquid-glass-accent text-orange-200 border-orange-400/50 font-bold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    <span>Container &amp; NAL Units</span>
+                  </button>
+
+                  <button
+                    onClick={() => setInspectTab('cert')}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
+                      inspectTab === 'cert'
+                        ? 'liquid-glass-accent text-orange-200 border-orange-400/50 font-bold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>Section 65B Certificate</span>
+                  </button>
+
+                  <button
+                    onClick={() => setInspectTab('custody')}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
+                      inspectTab === 'custody'
+                        ? 'liquid-glass-accent text-orange-200 border-orange-400/50 font-bold shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Custody Trace ({inspectData.custody_events?.length || 0})</span>
+                  </button>
+                </div>
+
+                {/* Inspector Tab Content Area */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {/* TAB 1: HEX DUMP */}
+                  {inspectTab === 'hex' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-xs font-mono text-slate-300/90 bg-orange-500/10 border border-orange-500/20 p-3 rounded-2xl">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Streamed first 512 bytes strictly in read-only binary mode (<code>&quot;rb&quot;</code>). Absolute zero disk write footprint.</span>
+                        </div>
+                        <span className="text-[10px] text-orange-300">Offset: 0x0000 to 0x01F0</span>
+                      </div>
+
+                      <div className="bg-black/70 rounded-2xl p-4 border border-white/10 font-mono text-xs overflow-x-auto shadow-inner">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="text-slate-500 border-b border-white/10 text-[10px] uppercase tracking-wider">
+                              <th className="py-1 px-3">Offset</th>
+                              <th className="py-1 px-3">Hex Bytes (16 Octets)</th>
+                              <th className="py-1 px-3">ASCII Text Equivalent</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 font-mono">
+                            {inspectData.hex_dump?.map((row: any) => (
+                              <tr key={row.offset} className="hover:bg-white/[0.04] transition-colors">
+                                <td className="py-1 px-3 text-orange-400 font-bold select-all">{row.offset}</td>
+                                <td className="py-1 px-3 text-slate-200 tracking-wider font-medium select-all">{row.hex}</td>
+                                <td className="py-1 px-3 text-emerald-400 select-all tracking-normal">
+                                  <span className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    {row.ascii}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: CONTAINER & NAL UNITS */}
+                  {inspectTab === 'header' && (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-2xl bg-black/50 border border-white/10">
+                        <div className="text-xs font-mono font-bold text-orange-300 mb-2 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-orange-400" />
+                          Stream Container Metadata Header
+                        </div>
+                        <pre className="text-xs font-mono text-slate-200 bg-black/70 p-4 rounded-xl border border-white/10 whitespace-pre-wrap leading-relaxed">
+                          {inspectData.text_header || "Raw Elementary Bitstream — No plain text metadata container prefix detected."}
+                        </pre>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-black/50 border border-white/10">
+                        <div className="text-xs font-mono font-bold text-sky-300 mb-3 flex items-center gap-2">
+                          <Layers className="w-4 h-4 text-sky-400" />
+                          Detected H.264 / H.265 NAL Units (Annex B 0x00000001 Delimiters)
+                        </div>
+
+                        {inspectData.nal_units && inspectData.nal_units.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {inspectData.nal_units.map((nal: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="p-3.5 rounded-xl bg-black/70 border border-white/10 font-mono text-xs flex flex-col justify-between"
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <span className="text-orange-400 font-bold">{nal.type_name}</span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                      {nal.offset_hex}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-300/80 font-sans leading-relaxed">
+                                    {nal.description}
+                                  </p>
+                                </div>
+                                <div className="mt-3 pt-2 border-t border-white/10 text-[10px] text-slate-400">
+                                  NAL Unit Type Code: <span className="text-white font-bold">{nal.nal_unit_type}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">No standard H.264 NAL units detected in the initial 512 bytes.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: SECTION 65B CERTIFICATE */}
+                  {inspectTab === 'cert' && inspectData.section_65b_certificate && (
+                    <div className="p-6 rounded-3xl bg-black/60 border border-amber-500/40 font-mono text-xs space-y-4 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
+                      <div className="border-b border-amber-500/30 pb-4 text-center">
+                        <div className="flex items-center justify-center gap-2 text-amber-400 text-sm font-bold uppercase tracking-wider mb-1">
+                          <Scale className="w-5 h-5 text-amber-400" />
+                          Certificate of Electronic Evidence Admissibility
+                        </div>
+                        <div className="text-[11px] text-slate-300">
+                          {inspectData.section_65b_certificate.act}
+                        </div>
+                        <div className="text-[10px] text-amber-400/80 mt-1">
+                          Certificate ID: {inspectData.section_65b_certificate.certificate_id}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <div className="text-slate-400">Competent Forensic Authority:</div>
+                          <div className="text-white font-bold">{inspectData.section_65b_certificate.competent_authority}</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <div className="text-slate-400">Territorial Court Jurisdiction:</div>
+                          <div className="text-white font-bold">{inspectData.section_65b_certificate.court_jurisdiction}</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <div className="text-slate-400">Electronic Device Origin:</div>
+                          <div className="text-slate-200 font-bold">{inspectData.section_65b_certificate.device_origin}</div>
+                        </div>
+                        <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                          <div className="text-slate-400">Acquisition Timestamps:</div>
+                          <div className="text-slate-200">UTC: {inspectData.section_65b_certificate.acquisition_timestamp_utc}</div>
+                          <div className="text-orange-300 font-bold">IST: {inspectData.section_65b_certificate.acquisition_timestamp_ist}</div>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-black/70 border border-white/10 space-y-2">
+                        <div className="text-amber-400 font-bold text-[11px]">Cryptographic Evidence Seals:</div>
+                        <div className="text-[10px] text-slate-300 flex items-center justify-between">
+                          <span>SHA-256: <code className="text-slate-100 font-bold break-all">{inspectData.section_65b_certificate.sha256_seal}</code></span>
+                          <button
+                            onClick={() => copyToClipboard(inspectData.section_65b_certificate.sha256_seal, 'cert_sha256')}
+                            className="text-slate-400 hover:text-white ml-2 cursor-pointer flex-shrink-0"
+                          >
+                            {copiedField === 'cert_sha256' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          MD5: <code className="text-slate-300 font-bold">{inspectData.section_65b_certificate.md5_digest}</code> · Size: {inspectData.section_65b_certificate.file_size_bytes} Bytes
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] font-sans text-slate-200 leading-relaxed space-y-2">
+                        <p>{inspectData.section_65b_certificate.integrity_attestation}</p>
+                        <p className="italic text-amber-300/90 font-mono text-[10px] border-t border-amber-500/20 pt-2">
+                          {inspectData.section_65b_certificate.legal_formula}
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <button
+                          onClick={() => copyToClipboard(JSON.stringify(inspectData.section_65b_certificate, null, 2), 'full_cert')}
+                          className="px-4 py-2 rounded-xl liquid-glass-secondary-button text-xs text-amber-300 flex items-center gap-1.5 cursor-pointer shadow"
+                        >
+                          {copiedField === 'full_cert' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedField === 'full_cert' ? 'Certificate Copied!' : 'Copy Section 65B Certificate JSON'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 4: CUSTODY CHAIN */}
+                  {inspectTab === 'custody' && (
+                    <div className="space-y-3">
+                      <div className="text-xs font-mono text-slate-300 flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-emerald-400" />
+                        <span>Cryptographic Ledger Entries Associated with Evidence Item</span>
+                      </div>
+
+                      {inspectData.custody_events && inspectData.custody_events.length > 0 ? (
+                        inspectData.custody_events.map((ev: any) => (
+                          <div
+                            key={ev.entry_id}
+                            className="p-4 rounded-2xl liquid-glass border-white/10 text-xs font-mono space-y-2 hover:border-orange-500/30 transition-all"
+                          >
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-orange-400 font-bold">ENTRY #{ev.entry_id} · {ev.action}</span>
+                              <span className="text-slate-400">{ev.timestamp_utc}</span>
+                            </div>
+                            <div className="text-slate-300 text-[11px]">Examiner: {ev.examiner}</div>
+                            <div className="text-[10px] text-slate-400 truncate" title={ev.prev_hash}>
+                              Prev Hash: <span className="font-mono text-slate-300">{ev.prev_hash}</span>
+                            </div>
+                            <div className="text-[10px] text-emerald-400 truncate" title={ev.entry_hash}>
+                              Entry Hash: <span className="font-mono text-emerald-300">{ev.entry_hash}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No custody events recorded for this item.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer Controls */}
+                <div className="p-4 px-6 border-t border-white/10 bg-black/40 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => copyToClipboard(inspectData.sha256, 'modal_sha')}
+                      className="px-3 py-1.5 rounded-xl liquid-glass-secondary-button text-xs text-slate-300 flex items-center gap-1.5 cursor-pointer shadow"
+                    >
+                      {copiedField === 'modal_sha' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedField === 'modal_sha' ? 'SHA-256 Copied!' : 'Copy SHA-256 Seal'}</span>
+                    </button>
+                    <button
+                      onClick={handleVerify}
+                      disabled={verifying}
+                      className="px-3.5 py-1.5 rounded-xl liquid-glass text-emerald-400 text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all shadow"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Verify Case Integrity</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setInspectModalOpen(false)}
+                    className="px-5 py-1.5 rounded-xl liquid-glass-button text-black font-semibold text-xs cursor-pointer shadow"
+                  >
+                    Close Inspector
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
       )}

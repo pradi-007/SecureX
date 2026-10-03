@@ -17,6 +17,7 @@ out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tsbuildinfo
 
 # Environment & Local Storage
 .env*.local

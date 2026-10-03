@@ -4,9 +4,13 @@ import { runDvrxBridge } from '@/lib/dvrx-bridge';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const caseId = searchParams.get('case_id');
+  const evidenceId = searchParams.get('evidence_id');
 
   try {
-    if (caseId) {
+    if (caseId && evidenceId) {
+      const data = await runDvrxBridge('inspect_evidence', { case_id: caseId, evidence_id: evidenceId });
+      return NextResponse.json(data);
+    } else if (caseId) {
       const data = await runDvrxBridge('get_case', { case_id: caseId });
       return NextResponse.json(data);
     } else {
@@ -46,6 +50,12 @@ export async function POST(req: NextRequest) {
       const data = await runDvrxBridge('verify_case', {
         case_id: body.case_id,
         examiner: body.examiner,
+      });
+      return NextResponse.json(data);
+    } else if (action === 'inspect_evidence') {
+      const data = await runDvrxBridge('inspect_evidence', {
+        case_id: body.case_id,
+        evidence_id: body.evidence_id,
       });
       return NextResponse.json(data);
     } else if (action === 'generate_sample_evidence') {
