@@ -196,36 +196,48 @@ function generateFallbackVendorAnalysis(selectedVendor?: string) {
   };
 }
 
+const RUNTIME_CASES: any[] = [...DEFAULT_CASES];
+const RUNTIME_EVIDENCE: Record<string, any[]> = {};
+
 function handleVercelFallback(command: string, payload: Record<string, any> = {}): any {
   if (command === 'list_supported_vendors') {
     return { status: 'ok', vendors: VENDOR_CATALOG };
   }
 
   if (command === 'list_cases') {
-    return { status: 'ok', cases: DEFAULT_CASES };
+    return { status: 'ok', cases: RUNTIME_CASES };
   }
 
   if (command === 'get_case') {
     const cId = payload.case_id || 'CASE-DEL-NIRBHAYA-2012';
-    const baseCase = DEFAULT_CASES.find((c) => c.case_id === cId) || DEFAULT_CASES[0];
+    const baseCase = RUNTIME_CASES.find((c) => c.case_id === cId) || {
+      case_id: cId,
+      examiner: 'Lead Digital Forensics Examiner',
+      notes: 'Forensic Case Record',
+      created_utc: new Date().toISOString(),
+      created_raw: new Date().toLocaleString(),
+      tz_offset: '+05:30',
+      evidence_count: 0,
+    };
+    const evidenceList = RUNTIME_EVIDENCE[cId] || [
+      {
+        evidence_id: 'EVD-001',
+        case_id: cId,
+        source_path: `/forensic_vault/${cId}/ch1_surveillance_stream.dd`,
+        file_size: 262144,
+        md5: '8b1a9953c4611296a827abf8c47804d7',
+        sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+        acquired_utc: '2026-10-03T12:00:00Z',
+        acquired_raw: '2026-10-03 17:30:00',
+        tz_offset: '+05:30',
+        examiner: baseCase.examiner,
+        notes: 'Single-pass bitstream image verified under Section 65B Indian Evidence Act',
+      },
+    ];
     return {
       status: 'ok',
       case: baseCase,
-      evidence: [
-        {
-          evidence_id: 'EVD-001',
-          case_id: cId,
-          source_path: `/forensic_vault/${cId}/ch1_surveillance_stream.dd`,
-          file_size: 262144,
-          md5: '8b1a9953c4611296a827abf8c47804d7',
-          sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
-          acquired_utc: '2026-10-03T12:00:00Z',
-          acquired_raw: '2026-10-03 17:30:00',
-          tz_offset: '+05:30',
-          examiner: baseCase.examiner,
-          notes: 'Single-pass bitstream image verified under Section 65B Indian Evidence Act',
-        },
-      ],
+      evidence: evidenceList,
       custody: {
         entries: [
           {
@@ -247,32 +259,52 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
   }
 
   if (command === 'create_case') {
+    const existing = RUNTIME_CASES.find((c) => c.case_id === payload.case_id);
+    const newCase = {
+      case_id: payload.case_id,
+      examiner: payload.examiner,
+      notes: payload.notes || '',
+      created_utc: new Date().toISOString(),
+      created_raw: new Date().toLocaleString(),
+      tz_offset: '+05:30',
+      evidence_count: 0,
+      custody_entry_count: 1,
+    };
+    if (!existing) {
+      RUNTIME_CASES.unshift(newCase);
+    }
     return {
       status: 'ok',
-      case: {
-        case_id: payload.case_id,
-        examiner: payload.examiner,
-        notes: payload.notes || '',
-        created_utc: new Date().toISOString(),
-      },
+      case: newCase,
     };
   }
 
   if (command === 'acquire_evidence') {
+    const cId = payload.case_id;
+    const newEvd = {
+      evidence_id: `EVD-${Date.now().toString().slice(-4)}`,
+      case_id: cId,
+      source_path: payload.source_path || 'evidence/cctv_ch1_stream.dd',
+      file_size: 262144,
+      md5: '7d793037a0760186574b0282f2f435e7',
+      sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      acquired_utc: new Date().toISOString(),
+      acquired_raw: new Date().toLocaleString(),
+      tz_offset: '+05:30',
+      examiner: payload.examiner || 'Special Forensic Examiner',
+      notes: payload.notes || 'Forensically sealed stream image',
+    };
+    if (!RUNTIME_EVIDENCE[cId]) {
+      RUNTIME_EVIDENCE[cId] = [];
+    }
+    RUNTIME_EVIDENCE[cId].push(newEvd);
+    const targetCase = RUNTIME_CASES.find((c) => c.case_id === cId);
+    if (targetCase) {
+      targetCase.evidence_count = RUNTIME_EVIDENCE[cId].length;
+    }
     return {
       status: 'ok',
-      evidence: {
-        evidence_id: `EVD-${Date.now().toString().slice(-4)}`,
-        case_id: payload.case_id,
-        source_path: payload.source_path || 'evidence/cctv_ch1_stream.dd',
-        file_size: 262144,
-        md5: '7d793037a0760186574b0282f2f435e7',
-        sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-        acquired_utc: new Date().toISOString(),
-        acquired_raw: new Date().toLocaleString(),
-        tz_offset: '+05:30',
-        examiner: payload.examiner || 'Special Forensic Examiner',
-      },
+      evidence: newEvd,
     };
   }
 

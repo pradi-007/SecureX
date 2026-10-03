@@ -43,12 +43,12 @@ interface CaseSummary {
   case_id: string;
   examiner: string;
   created_utc: string;
-  created_raw: string;
-  tz_offset: string;
-  notes: string;
-  case_dir: string;
-  evidence_count: number;
-  custody_entry_count: number;
+  created_raw?: string;
+  tz_offset?: string;
+  notes?: string;
+  case_dir?: string;
+  evidence_count?: number;
+  custody_entry_count?: number;
 }
 
 interface CaseDetail {
@@ -164,7 +164,7 @@ const INDIAN_SOLVED_CASES = [
 export default function ForensicApp() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [selectedCaseId, setSelectedCaseId] = useState<string>('CASE-DEL-NIRBHAYA-2012');
-  const [caseFilter, setCaseFilter] = useState<'all' | 'indian' | 'lab'>('indian');
+  const [caseFilter, setCaseFilter] = useState<'all' | 'indian' | 'lab'>('all');
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [verifying, setVerifying] = useState<boolean>(false);
@@ -195,15 +195,30 @@ export default function ForensicApp() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const isIndianCase = (id: string) => {
+    const upper = (id || '').toUpperCase();
     return (
-      id.startsWith('CASE-DEL-') ||
-      id.startsWith('CASE-MUM-') ||
-      id.startsWith('CASE-BLR-') ||
-      id.startsWith('CASE-UP-')
+      upper.startsWith('CASE-DEL-') ||
+      upper.startsWith('CASE-MUM-') ||
+      upper.startsWith('CASE-BLR-') ||
+      upper.startsWith('CASE-UP-') ||
+      upper.startsWith('CASE-IN-') ||
+      upper.includes('INDIAN') ||
+      upper.includes('DELHI') ||
+      upper.includes('MUMBAI') ||
+      upper.includes('BANGALORE') ||
+      upper.includes('PRAYAGRAJ') ||
+      upper.includes('BURARI') ||
+      upper.includes('NIRBHAYA') ||
+      upper.includes('KOLKATA') ||
+      upper.includes('CHENNAI') ||
+      upper.includes('HYDERABAD') ||
+      upper.includes('PUNE')
     );
   };
 
   const filteredCases = cases.filter((c) => {
+    // Crucial: The currently selected case is always visible so newly added cases never disappear
+    if (c.case_id === selectedCaseId) return true;
     if (caseFilter === 'indian') return isIndianCase(c.case_id);
     if (caseFilter === 'lab') return !isIndianCase(c.case_id);
     return true;
@@ -259,25 +274,57 @@ export default function ForensicApp() {
     e.preventDefault();
     if (!newCaseId || !newExaminer) return;
     setLoading(true);
+    const targetCaseId = newCaseId.trim();
+    const targetExaminer = newExaminer.trim();
+    const targetNotes = newNotes;
+
     try {
       const res = await fetch('/api/dvrx', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'create_case',
-          case_id: newCaseId,
-          examiner: newExaminer,
-          notes: newNotes,
+          case_id: targetCaseId,
+          examiner: targetExaminer,
+          notes: targetNotes,
         }),
       });
       const data = await res.json();
       if (data.status === 'ok') {
+        const createdCase = data.case || {
+          case_id: targetCaseId,
+          examiner: targetExaminer,
+          notes: targetNotes,
+          created_utc: new Date().toISOString(),
+          created_raw: new Date().toLocaleString(),
+          tz_offset: '+05:30',
+        };
+
+        const newCaseItem: CaseSummary = {
+          case_id: createdCase.case_id,
+          examiner: createdCase.examiner,
+          created_utc: createdCase.created_utc || new Date().toISOString(),
+          notes: createdCase.notes || '',
+          evidence_count: 0,
+        };
+
+        // Guarantee immediate presence in local state
+        setCases((prev) => {
+          if (prev.some((c) => c.case_id === newCaseItem.case_id)) return prev;
+          return [newCaseItem, ...prev];
+        });
+
+        // Ensure visibility and immediate selection
+        setCaseFilter('all');
+        setSelectedCaseId(createdCase.case_id);
         setShowNewCase(false);
         setNewCaseId('');
         setNewExaminer('');
         setNewNotes('');
+
+        // Refresh and load newly created case details
         await fetchCases();
-        setSelectedCaseId(data.case.case_id);
+        await fetchCaseDetails(createdCase.case_id);
       } else {
         alert(data.message || 'Error creating case');
       }

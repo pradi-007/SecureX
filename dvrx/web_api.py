@@ -90,9 +90,15 @@ def verify_case(case_id: str, examiner: str | None = None, cases_dir: str | None
 def inspect_evidence(
     case_id: str,
     evidence_id: str,
-    selected_vendor: str | None = None,
     cases_dir: str | None = None,
+    selected_vendor: str | None = None,
 ) -> Dict[str, Any]:
+    # Handle potential swap if 3rd positional was a vendor name
+    if cases_dir and any(cases_dir.lower().startswith(v) for v in ["hik", "dah", "cp", "hon", "uni", "vig", "god", "mat", "gen"]):
+        if selected_vendor is None:
+            selected_vendor = cases_dir
+            cases_dir = None
+
     manager = get_manager(cases_dir)
     case = manager.load_case(case_id)
     evidence_list = manager.list_evidence(case_id)
