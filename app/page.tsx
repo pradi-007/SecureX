@@ -33,6 +33,7 @@ import {
   X,
   Copy,
   Check,
+  Printer,
 } from 'lucide-react';
 
 interface CaseSummary {
@@ -441,10 +442,41 @@ export default function ForensicApp() {
     }
   };
 
+  // Keyboard Accessibility: Escape key dismisses modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNewCase(false);
+        setShowAcquire(false);
+        setInspectModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const copyToClipboard = (text: string, fieldName: string) => {
-    navigator.clipboard?.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(null), 2000);
+    try {
+      if (navigator?.clipboard?.writeText && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (e) {
+      console.warn('Clipboard fallback invoked', e);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
   };
 
   const scrollToCases = () => {
@@ -685,10 +717,10 @@ export default function ForensicApp() {
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-xs font-semibold text-slate-200 flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-orange-400" />
-                    <span>Registered Evidence Items ({activeCase.evidence.length})</span>
+                    <span>Registered Evidence Items ({(activeCase.evidence || []).length})</span>
                   </div>
                   <div className="flex gap-2.5">
-                    {activeCase.evidence.length > 0 && (
+                    {(activeCase.evidence || []).length > 0 && (
                       <button
                         onClick={() => handleInspectEvidence(activeCase.case.case_id, activeCase.evidence[0].evidence_id)}
                         className="px-4 py-2 rounded-xl liquid-glass text-orange-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer hover:border-orange-400/50 hover:text-white transition-all shadow"
@@ -748,12 +780,39 @@ export default function ForensicApp() {
                       <div>Custody Chain: {verifyReport.custody_valid ? 'INTACT' : 'BROKEN'}</div>
                       <div>Evidence Verified: {verifyReport.evidence_verified_count} / {verifyReport.evidence_count}</div>
                     </div>
+
+                    {verifyReport.evidence_details && verifyReport.evidence_details.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                        <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">
+                          Cryptographic Item Audit Breakdown:
+                        </div>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {verifyReport.evidence_details.map((det: any) => (
+                            <div key={det.evidence_id} className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-orange-400">{det.evidence_id}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border ${
+                                  det.is_valid
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-red-500/20 text-red-300 border-red-500/30'
+                                }`}>
+                                  {det.status}
+                                </span>
+                              </div>
+                              <span className="text-slate-400 font-mono text-[10px] truncate max-w-sm" title={det.source_path}>
+                                {det.source_path}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Evidence List Table */}
                 <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md">
-                  {activeCase.evidence.length === 0 ? (
+                  {(activeCase.evidence || []).length === 0 ? (
                     <div className="text-center py-8 text-xs text-slate-400 border border-dashed border-white/10 rounded-2xl m-3">
                       No evidence files registered yet for this case. Click &quot;Acquire Evidence File&quot; above.
                     </div>
@@ -770,7 +829,7 @@ export default function ForensicApp() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-slate-300">
-                        {activeCase.evidence.map((ev) => (
+                        {(activeCase.evidence || []).map((ev) => (
                           <tr key={ev.evidence_id} className="hover:bg-white/[0.04] transition-colors">
                             <td className="py-3 px-4 font-semibold text-orange-400">{ev.evidence_id}</td>
                             <td className="py-3 px-4">{ev.file_size.toLocaleString()} B</td>
@@ -812,7 +871,7 @@ export default function ForensicApp() {
               </div>
 
               <div className="mt-4 space-y-3 overflow-y-auto max-h-[500px] pr-1">
-                {activeCase.custody.entries.map((entry, idx) => (
+                {(activeCase.custody?.entries || []).map((entry, idx) => (
                   <div
                     key={entry.entry_id}
                     className="p-4 rounded-2xl liquid-glass border-white/10 text-[11px] font-mono hover:border-orange-500/35 transition-all"
@@ -1013,7 +1072,10 @@ export default function ForensicApp() {
 
       {/* New Case Modal */}
       {showNewCase && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex items-center justify-center p-4">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowNewCase(false); }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex items-center justify-center p-4"
+        >
           <div className="liquid-glass border-white/20 rounded-3xl p-7 max-w-md w-full shadow-[0_25px_60px_rgba(0,0,0,0.85)]">
             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-orange-400" />
@@ -1078,7 +1140,10 @@ export default function ForensicApp() {
 
       {/* Acquire Evidence Modal */}
       {showAcquire && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex items-center justify-center p-4">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAcquire(false); }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex items-center justify-center p-4"
+        >
           <div className="liquid-glass border-white/20 rounded-3xl p-7 max-w-lg w-full shadow-[0_25px_60px_rgba(0,0,0,0.85)]">
             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
               <HardDrive className="w-5 h-5 text-orange-400" />
@@ -1220,7 +1285,10 @@ export default function ForensicApp() {
 
       {/* Deep Forensic Evidence Inspector Modal */}
       {inspectModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6 overflow-hidden">
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setInspectModalOpen(false); }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-6 overflow-hidden"
+        >
           <div className="liquid-glass border-white/20 rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden">
             {/* Modal Header */}
             <div className="p-6 pb-4 border-b border-white/10 flex items-center justify-between">
@@ -1486,7 +1554,14 @@ export default function ForensicApp() {
                         </p>
                       </div>
 
-                      <div className="flex justify-end pt-2">
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+                        <button
+                          onClick={() => window.print()}
+                          className="px-4 py-2 rounded-xl liquid-glass text-xs text-slate-200 flex items-center gap-1.5 cursor-pointer shadow hover:text-white transition-all"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-orange-400" />
+                          <span>Print / Save Certificate</span>
+                        </button>
                         <button
                           onClick={() => copyToClipboard(JSON.stringify(inspectData.section_65b_certificate, null, 2), 'full_cert')}
                           className="px-4 py-2 rounded-xl liquid-glass-secondary-button text-xs text-amber-300 flex items-center gap-1.5 cursor-pointer shadow"

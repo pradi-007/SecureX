@@ -97,6 +97,19 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
 
     src_path = Path(target_ev.source_path)
     exists = src_path.exists()
+    if not exists:
+        # Fallback 1: check case evidence directory
+        candidate1 = Path(case.case_dir) / "evidence" / src_path.name
+        if candidate1.exists():
+            src_path = candidate1
+            exists = True
+        else:
+            # Fallback 2: check root evidence directory
+            candidate2 = Path.cwd() / "evidence" / src_path.name
+            if candidate2.exists():
+                src_path = candidate2
+                exists = True
+
     header_bytes = b""
     hex_dump = []
     text_header = ""
@@ -106,7 +119,8 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
         with open(src_path, "rb") as f:
             header_bytes = f.read(512)
 
-        for i in range(0, min(len(header_bytes), 256), 16):
+        # Full 512 bytes hex dump formatted in 16-byte rows (up to 32 rows)
+        for i in range(0, min(len(header_bytes), 512), 16):
             chunk = header_bytes[i : i + 16]
             hex_str = " ".join(f"{b:02x}" for b in chunk)
             ascii_str = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
@@ -120,31 +134,50 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
             raw_text = header_bytes.decode("utf-8", errors="ignore")
             if "---BEGIN_RAW_STREAM_BLOCK---" in raw_text:
                 text_header = raw_text.split("---BEGIN_RAW_STREAM_BLOCK---")[0].strip()
+            elif "DVRX_FORENSIC_STREAM_CONTAINER_V1" in raw_text:
+                lines = [l for l in raw_text.splitlines() if ":" in l or "DVRX" in l]
+                text_header = "\n".join(lines[:6]).strip()
         except Exception:
             pass
 
+        # Scan for Annex B NAL units (both 4-byte 0x00000001 and 3-byte 0x000001)
         idx = 0
-        while True:
-            pos = header_bytes.find(b"\x00\x00\x00\x01", idx)
-            if pos == -1 or len(nal_units) >= 5:
+        while idx < len(header_bytes) - 4 and len(nal_units) < 10:
+            pos4 = header_bytes.find(b"\x00\x00\x00\x01", idx)
+            pos3 = header_bytes.find(b"\x00\x00\x01", idx)
+
+            start_len = 0
+            pos = -1
+            if pos4 != -1 and (pos3 == -1 or pos4 <= pos3):
+                pos = pos4
+                start_len = 4
+            elif pos3 != -1:
+                pos = pos3
+                start_len = 3
+
+            if pos == -1:
                 break
-            if pos + 4 < len(header_bytes):
-                nal_byte = header_bytes[pos + 4]
+
+            header_offset = pos + start_len
+            if header_offset < len(header_bytes):
+                nal_byte = header_bytes[header_offset]
                 nal_type = nal_byte & 0x1F
                 nal_name = {
-                    1: "Coded slice of a non-IDR picture",
-                    5: "Coded slice of an IDR picture (Keyframe)",
-                    6: "SEI (Supplemental enhancement info)",
-                    7: "SPS (Sequence parameter set)",
-                    8: "PPS (Picture parameter set)",
-                    9: "Access unit delimiter",
+                    1: "Coded slice of a non-IDR picture (P/B-Frame)",
+                    5: "Coded slice of an IDR picture (I-Frame Keyframe)",
+                    6: "SEI (Supplemental Enhancement Information)",
+                    7: "SPS (Sequence Parameter Set - Resolution & Profile)",
+                    8: "PPS (Picture Parameter Set - Slice Coding Options)",
+                    9: "AUD (Access Unit Delimiter)",
                 }.get(nal_type, f"NAL Unit Type {nal_type}")
+
                 nal_units.append({
-                    "offset": f"0x{pos:04x}",
-                    "type_code": nal_type,
+                    "offset_hex": f"0x{pos:08x}",
+                    "nal_unit_type": nal_type,
+                    "type_name": nal_name.split(" (")[0],
                     "description": nal_name,
                 })
-            idx = pos + 4
+            idx = pos + start_len
 
     custody = manager.get_custody_log(case_id)
     related_entries = []
@@ -194,6 +227,7 @@ def inspect_evidence(case_id: str, evidence_id: str, cases_dir: str | None = Non
         "nal_units": nal_units,
         "custody_entries": related_entries,
         "certificate_65b": certificate,
+        "section_65b_certificate": certificate,
     }
 
 

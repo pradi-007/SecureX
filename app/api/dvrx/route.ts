@@ -65,10 +65,24 @@ export async function POST(req: NextRequest) {
       await fs.mkdir(evidenceDir, { recursive: true });
       const filename = `cctv_ch1_${Date.now()}.dd`;
       const filePath = path.join(evidenceDir, filename);
-      const block = Buffer.from('DVRX_SYNTHETIC_H264_NAL_SURVEILLANCE_STREAM_RECORDING_BLOCK_00\\x00\\x00\\x01\\x67\\x42\\x00\\x1e');
+      const headerBlock = Buffer.from(
+        'DVRX_FORENSIC_STREAM_CONTAINER_V1\n' +
+        'JURISDICTION: Standard Laboratory Simulation\n' +
+        'CAMERA_NODE: SYNTHETIC-LAB-CH1\n' +
+        'FORMAT: H264_ANNEX_B_RAW\n' +
+        '---BEGIN_RAW_STREAM_BLOCK---\n'
+      );
+      const nalUnits = Buffer.concat([
+        Buffer.from([0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1e]), // SPS (Seq Param Set)
+        Buffer.from([0x00, 0x00, 0x00, 0x01, 0x68, 0xce, 0x3c, 0x80]), // PPS (Pic Param Set)
+        Buffer.from([0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84, 0x00]), // IDR Keyframe
+        Buffer.from([0x00, 0x00, 0x01, 0x61, 0x9a, 0x01, 0x02]),       // Non-IDR Slice
+      ]);
+      const block = Buffer.concat([headerBlock, nalUnits]);
       const fullBuffer = Buffer.alloc(256 * 1024);
-      for (let offset = 0; offset < fullBuffer.length; offset += block.length) {
-        block.copy(fullBuffer, offset, 0, Math.min(block.length, fullBuffer.length - offset));
+      block.copy(fullBuffer, 0);
+      for (let offset = block.length; offset < fullBuffer.length; offset += nalUnits.length) {
+        nalUnits.copy(fullBuffer, offset, 0, Math.min(nalUnits.length, fullBuffer.length - offset));
       }
       await fs.writeFile(filePath, fullBuffer);
 

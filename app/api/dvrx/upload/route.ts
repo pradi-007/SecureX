@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const destPath = path.join(evidenceDir, file.name);
+    const sanitizedBase = path.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeFilename = `${Date.now()}_${sanitizedBase || 'evidence.raw'}`;
+    const destPath = path.join(evidenceDir, safeFilename);
 
     await fs.writeFile(destPath, buffer);
 
