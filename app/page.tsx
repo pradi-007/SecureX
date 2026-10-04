@@ -1775,50 +1775,6 @@ export default function ForensicApp() {
         </div>
       </section>
 
-      {/* 5. CLI Quickstart Section */}
-      <section id="cli" className="relative z-10 max-w-7xl mx-auto px-6 py-8">
-        <div className="p-7 rounded-3xl liquid-glass shadow-2xl">
-          <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-5 h-5 text-orange-400" />
-              <h3 className="font-bold text-white text-base">Terminal CLI Quickstart</h3>
-            </div>
-            <span className="text-xs text-slate-300/80 font-mono">Executable via: .\dvrx or py -3.13 -m dvrx</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
-            <div className="p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
-              <div className="text-orange-400 font-bold mb-2">1. Create Case</div>
-              <code className="text-orange-200 block bg-black/70 p-3 rounded-xl border border-white/10 break-all">
-                .\dvrx case new --id CASE-001 --examiner &quot;Det. Miller&quot;
-              </code>
-              <p className="text-[11px] text-slate-300/80 mt-2.5 font-sans leading-relaxed">
-                Initializes case directory, sets up SQLite <code>case.db</code>, and seals the genesis custody entry.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
-              <div className="text-orange-400 font-bold mb-2">2. Ingest Evidence</div>
-              <code className="text-orange-200 block bg-black/70 p-3 rounded-xl border border-white/10 break-all">
-                .\dvrx acquire --case CASE-001 --source evidence.dd
-              </code>
-              <p className="text-[11px] text-slate-300/80 mt-2.5 font-sans leading-relaxed">
-                Streams MD5 and SHA-256 in read-only mode, records into evidence table, and appends to custody chain.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10">
-              <div className="text-orange-400 font-bold mb-2">3. Verify Integrity</div>
-              <code className="text-orange-200 block bg-black/70 p-3 rounded-xl border border-white/10 break-all">
-                .\dvrx case verify --case CASE-001
-              </code>
-              <p className="text-[11px] text-slate-300/80 mt-2.5 font-sans leading-relaxed">
-                Cryptographically audits custody ledger and re-hashes evidence to detect any byte alterations.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* New Case Modal */}
       {showNewCase && (
