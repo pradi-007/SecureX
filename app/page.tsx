@@ -95,7 +95,64 @@ interface CaseDetail {
 
 const INDIAN_SOLVED_CASES = [
   {
+    id: 'CASE-CYBER-DEL-2022-AIIMS',
+    category: 'cyber',
+    name: '2022 AIIMS New Delhi Hospital Ransomware Infiltration',
+    agency: 'Delhi Police Special Cell (IFSO) · CERT-In · National Cyber Security Coordinator',
+    jurisdiction: 'Ansari Nagar, New Delhi · National Critical Health Infrastructure',
+    date: 'November 2022',
+    technique: 'VSS Shadow Volume Recovery, Memory Volatility & C2 Packet Beaconing Analysis',
+    cctvCount: '5 Main Database Clusters & 40+ Virtual Endpoints (200 TB Encrypted)',
+    summary: 'Targeted ransomware attack encrypted 5 physical database clusters housing millions of outpatient records and VVIP archives. Forensics uncovered lateral movement via unauthorized RDP pivot, extracted C2 signatures from memory dumps, and restored complete databases without paying extortion ransom.',
+    verdict: 'SOLVED & RESTORED — ZERO RANSOM PAID & ELECTRONIC INFRASTRUCTURE HARDENED',
+    ieaSection: 'Section 65B Indian Evidence Act / BSA 2023 Certified',
+    badgeColor: 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10',
+  },
+  {
+    id: 'CASE-CYBER-PUN-2018-COSMOS',
+    category: 'cyber',
+    name: '2018 Cosmos Co-operative Bank ₹94 Crore Cyber Heist',
+    agency: 'Pune Police Cyber Crime Branch · CBI Interpol NCB New Delhi',
+    jurisdiction: 'Pune, Maharashtra · Transnational ATM Switching Fabric (28 Nations)',
+    date: 'August 2018',
+    technique: 'Malware-Injected Proxy Switch Demuxing & SWIFT Intercept Packet Analysis',
+    cctvCount: '14,000+ Synchronized ATM Terminal Transactions across 28 Countries',
+    summary: 'Hackers compromised the central switching server to create an unauthorized rogue ATM switch proxy, approving 14,000+ unauthorized ATM withdrawals simultaneously across 28 countries in 2 hours plus ₹13.9 Crore fraudulent SWIFT wire transfers. Forensic network packet reconstruction identified malware signatures and money mules.',
+    verdict: 'SOLVED & CONVICTED — MULTIPLE ARRESTS NATIONWIDE & INTERPOL RED CORNER NOTICES',
+    ieaSection: 'Section 65B Indian Evidence Act / BSA 2023 Certified',
+    badgeColor: 'border-rose-500/40 text-rose-300 bg-rose-500/10',
+  },
+  {
+    id: 'CASE-CYBER-TN-2019-KUDANKULAM',
+    category: 'cyber',
+    name: '2019 Kudankulam Nuclear Power Plant (KKNPP) Spyware Attack',
+    agency: 'National Cyber Coordination Centre (NCCC) · NPCIL Computer Emergency Response',
+    jurisdiction: 'Radhapuram, Tirunelveli, Tamil Nadu · Nuclear Critical Infrastructure',
+    date: 'October 2019',
+    technique: 'Dtrack RAT Binary Disassembly, Hardcoded Key Extraction & Network Airgap Triage',
+    cctvCount: 'Administrative Domain Controller & Internal Office Network Workstations',
+    summary: 'Cyber threat actors deployed Dtrack Remote Access Trojan to infect administrative PCs at Kudankulam Nuclear Power Plant. Forensic binary decompilation confirmed hardcoded surveillance credentials, keystroke logging routines, and proved conclusively that the reactor control network was physically air-gapped and untouched.',
+    verdict: 'SOLVED & SECURED — AIR-GAP INTEGRITY CONFIRMED & MALWARE TRACE NEUTRALIZED',
+    ieaSection: 'Section 65B Indian Evidence Act / BSA 2023 Certified',
+    badgeColor: 'border-indigo-500/40 text-indigo-300 bg-indigo-500/10',
+  },
+  {
+    id: 'CASE-CYBER-MUM-2023-SIMSWAP',
+    category: 'cyber',
+    name: '2023 Mumbai Multi-Crore High-Frequency SIM-Swap Fraud',
+    agency: 'Mumbai Police Cyber Crime Unit (Bandra-Kurla Complex)',
+    jurisdiction: 'BKC, Mumbai · Telecom Service Provider Core CDR Triangulation',
+    date: 'March 2023',
+    technique: 'Telecom SS7 CDR Log Triangulation, IP Geolocation & Parallel Banking Mule Trace',
+    cctvCount: '48 Telco Retail Kiosks & 24 Bank Accounts Linked across Maharashtra',
+    summary: 'Syndicate compromised telecom distribution portals to trigger midnight SIM-swap requests against high-net-worth business accounts, intercepting 2FA SMS tokens to drain ₹58 Crores via RTGS. Digital forensics correlated telecom audit logs with banking API timestamps, recovering ₹47 Crores and arresting the core nexus.',
+    verdict: 'SOLVED & RECOVERED — 12 ARRESTED & ₹47 CRORE SEIZED/FROZEN IN TRANSIT',
+    ieaSection: 'Section 65B Indian Evidence Act / BSA 2023 Certified',
+    badgeColor: 'border-teal-500/40 text-teal-300 bg-teal-500/10',
+  },
+  {
     id: 'CASE-DEL-NIRBHAYA-2012',
+    category: 'surveillance',
     name: '2012 Delhi Nirbhaya Case',
     agency: 'Delhi Police SIT · Central Forensic Science Laboratory (CFSL)',
     jurisdiction: 'New Delhi · Supreme Court of India Affirmed',
@@ -109,6 +166,7 @@ const INDIAN_SOLVED_CASES = [
   },
   {
     id: 'CASE-MUM-2611-CST',
+    category: 'surveillance',
     name: '2008 Mumbai 26/11 Terror Attacks',
     agency: 'Mumbai Police Crime Branch · CFSL Digital Forensics',
     jurisdiction: 'CST Railway Station & Taj Hotel, Mumbai',
@@ -122,6 +180,7 @@ const INDIAN_SOLVED_CASES = [
   },
   {
     id: 'CASE-BLR-2017-LANKESH',
+    category: 'surveillance',
     name: '2017 Gauri Lankesh Homicide',
     agency: 'Karnataka Police Special Investigation Team (SIT Cyber Wing)',
     jurisdiction: 'Rajarajeshwari Nagar, Bengaluru',
@@ -135,6 +194,7 @@ const INDIAN_SOLVED_CASES = [
   },
   {
     id: 'CASE-DEL-2018-BURARI',
+    category: 'surveillance',
     name: '2018 Burari 11 Deaths Case',
     agency: 'Delhi Police Crime Branch (Digital Investigation Unit)',
     jurisdiction: 'Sant Nagar, Burari, New Delhi',
@@ -148,6 +208,7 @@ const INDIAN_SOLVED_CASES = [
   },
   {
     id: 'CASE-UP-2023-PRAYAGRAJ',
+    category: 'surveillance',
     name: '2023 Umesh Pal Murder Shootout',
     agency: 'Uttar Pradesh Police Special Task Force (STF Digital Wing)',
     jurisdiction: 'Sulem Sarai, Prayagraj, Uttar Pradesh',
@@ -163,8 +224,8 @@ const INDIAN_SOLVED_CASES = [
 
 export default function ForensicApp() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('CASE-DEL-NIRBHAYA-2012');
-  const [caseFilter, setCaseFilter] = useState<'all' | 'indian' | 'lab'>('all');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('CASE-CYBER-DEL-2022-AIIMS');
+  const [caseFilter, setCaseFilter] = useState<'all' | 'cyber' | 'surveillance' | 'indian' | 'lab'>('all');
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [verifying, setVerifying] = useState<boolean>(false);
@@ -173,7 +234,10 @@ export default function ForensicApp() {
   // New Case Modal State
   const [showNewCase, setShowNewCase] = useState(false);
   const [newCaseId, setNewCaseId] = useState('');
+  const [newCaseType, setNewCaseType] = useState<'cyber_crime' | 'surveillance'>('cyber_crime');
   const [newExaminer, setNewExaminer] = useState('');
+  const [newAgency, setNewAgency] = useState('');
+  const [newJurisdiction, setNewJurisdiction] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
   // Evidence Acquisition State
@@ -194,6 +258,25 @@ export default function ForensicApp() {
   const [vendorAnalyzing, setVendorAnalyzing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  const isCyberCase = (c: CaseSummary | string) => {
+    const id = typeof c === 'string' ? c : c?.case_id || '';
+    const upper = id.toUpperCase();
+    const notes = typeof c === 'object' && c?.notes ? c.notes.toUpperCase() : '';
+    return (
+      upper.startsWith('CASE-CYBER-') ||
+      upper.includes('CYBER') ||
+      upper.includes('AIIMS') ||
+      upper.includes('COSMOS') ||
+      upper.includes('KUDANKULAM') ||
+      upper.includes('SIMSWAP') ||
+      upper.includes('RANSOMWARE') ||
+      upper.includes('MALWARE') ||
+      notes.includes('CYBER') ||
+      notes.includes('RANSOMWARE') ||
+      notes.includes('MALWARE')
+    );
+  };
+
   const isIndianCase = (id: string) => {
     const upper = (id || '').toUpperCase();
     return (
@@ -202,6 +285,7 @@ export default function ForensicApp() {
       upper.startsWith('CASE-BLR-') ||
       upper.startsWith('CASE-UP-') ||
       upper.startsWith('CASE-IN-') ||
+      upper.startsWith('CASE-CYBER-') ||
       upper.includes('INDIAN') ||
       upper.includes('DELHI') ||
       upper.includes('MUMBAI') ||
@@ -209,6 +293,10 @@ export default function ForensicApp() {
       upper.includes('PRAYAGRAJ') ||
       upper.includes('BURARI') ||
       upper.includes('NIRBHAYA') ||
+      upper.includes('AIIMS') ||
+      upper.includes('COSMOS') ||
+      upper.includes('KUDANKULAM') ||
+      upper.includes('SIMSWAP') ||
       upper.includes('KOLKATA') ||
       upper.includes('CHENNAI') ||
       upper.includes('HYDERABAD') ||
@@ -219,6 +307,8 @@ export default function ForensicApp() {
   const filteredCases = cases.filter((c) => {
     // Crucial: The currently selected case is always visible so newly added cases never disappear
     if (c.case_id === selectedCaseId) return true;
+    if (caseFilter === 'cyber') return isCyberCase(c);
+    if (caseFilter === 'surveillance') return !isCyberCase(c);
     if (caseFilter === 'indian') return isIndianCase(c.case_id);
     if (caseFilter === 'lab') return !isIndianCase(c.case_id);
     return true;
@@ -277,6 +367,9 @@ export default function ForensicApp() {
     const targetCaseId = newCaseId.trim();
     const targetExaminer = newExaminer.trim();
     const targetNotes = newNotes;
+    const targetCaseType = newCaseType;
+    const targetAgency = newAgency.trim() || (newCaseType === 'cyber_crime' ? 'Special Cyber Forensics Division' : 'Digital Forensics Unit');
+    const targetJurisdiction = newJurisdiction.trim() || 'Sessions & Cyber Appellate Court';
 
     try {
       const res = await fetch('/api/dvrx', {
@@ -287,6 +380,9 @@ export default function ForensicApp() {
           case_id: targetCaseId,
           examiner: targetExaminer,
           notes: targetNotes,
+          case_type: targetCaseType,
+          agency: targetAgency,
+          jurisdiction: targetJurisdiction,
         }),
       });
       const data = await res.json();
@@ -295,6 +391,9 @@ export default function ForensicApp() {
           case_id: targetCaseId,
           examiner: targetExaminer,
           notes: targetNotes,
+          case_type: targetCaseType,
+          agency: targetAgency,
+          jurisdiction: targetJurisdiction,
           created_utc: new Date().toISOString(),
           created_raw: new Date().toLocaleString(),
           tz_offset: '+05:30',
@@ -320,7 +419,10 @@ export default function ForensicApp() {
         setShowNewCase(false);
         setNewCaseId('');
         setNewExaminer('');
+        setNewAgency('');
+        setNewJurisdiction('');
         setNewNotes('');
+        setNewCaseType('cyber_crime');
 
         // Refresh and load newly created case details
         await fetchCases();
@@ -704,18 +806,7 @@ export default function ForensicApp() {
         </div>
 
         {/* Filter Pills for Cases */}
-        <div className="flex items-center gap-2 pt-4 pb-1">
-          <button
-            onClick={() => setCaseFilter('indian')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
-              caseFilter === 'indian'
-                ? 'liquid-glass-accent text-orange-200 border-orange-400/60 font-semibold shadow'
-                : 'liquid-glass text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>🇮🇳</span>
-            <span>Indian Solved Cases ({cases.filter((c) => isIndianCase(c.case_id)).length})</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2 pt-4 pb-1">
           <button
             onClick={() => setCaseFilter('all')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -725,7 +816,40 @@ export default function ForensicApp() {
             }`}
           >
             <FolderOpen className="w-3.5 h-3.5" />
-            <span>All Cases ({cases.length})</span>
+            <span>All Forensic Cases ({cases.length})</span>
+          </button>
+          <button
+            onClick={() => setCaseFilter('cyber')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+              caseFilter === 'cyber'
+                ? 'liquid-glass-accent text-cyan-200 border-cyan-400/60 font-semibold shadow'
+                : 'liquid-glass text-slate-400 hover:text-white'
+            }`}
+          >
+            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Cyber Crime ({cases.filter(isCyberCase).length})</span>
+          </button>
+          <button
+            onClick={() => setCaseFilter('surveillance')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+              caseFilter === 'surveillance'
+                ? 'liquid-glass-accent text-orange-200 border-orange-400/60 font-semibold shadow'
+                : 'liquid-glass text-slate-400 hover:text-white'
+            }`}
+          >
+            <Film className="w-3.5 h-3.5 text-orange-400" />
+            <span>CCTV / Surveillance ({cases.filter((c) => !isCyberCase(c)).length})</span>
+          </button>
+          <button
+            onClick={() => setCaseFilter('indian')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+              caseFilter === 'indian'
+                ? 'liquid-glass-accent text-orange-200 border-orange-400/60 font-semibold shadow'
+                : 'liquid-glass text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🇮🇳</span>
+            <span>Landmark Solved Cases ({cases.filter((c) => isIndianCase(c.case_id)).length})</span>
           </button>
           <button
             onClick={() => setCaseFilter('lab')}
@@ -743,6 +867,7 @@ export default function ForensicApp() {
         {/* Case Selector Tabs */}
         <div className="flex items-center gap-2.5 overflow-x-auto py-3">
           {filteredCases.map((c) => {
+            const isCyber = isCyberCase(c);
             const isInd = isIndianCase(c.case_id);
             return (
               <button
@@ -750,11 +875,15 @@ export default function ForensicApp() {
                 onClick={() => setSelectedCaseId(c.case_id)}
                 className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-medium transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   selectedCaseId === c.case_id
-                    ? 'liquid-glass-accent text-orange-200 border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.25)]'
+                    ? isCyber
+                      ? 'liquid-glass-accent text-cyan-200 border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                      : 'liquid-glass-accent text-orange-200 border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.25)]'
                     : 'liquid-glass text-slate-400 hover:text-white hover:border-white/25'
                 }`}
               >
-                {isInd ? (
+                {isCyber ? (
+                  <span className="text-cyan-400 text-sm">💻</span>
+                ) : isInd ? (
                   <span className="text-sm">🇮🇳</span>
                 ) : (
                   <FolderOpen className="w-3.5 h-3.5 text-orange-400" />
@@ -777,13 +906,21 @@ export default function ForensicApp() {
               <div className="p-7 rounded-3xl liquid-glass">
                 <div className="flex items-center justify-between pb-4 border-b border-white/10">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-xl font-bold font-mono text-white flex items-center gap-2 drop-shadow">
                         {activeCase.case.case_id}
                       </h3>
-                      {isIndianCase(activeCase.case.case_id) && (
+                      {isCyberCase(activeCase.case.case_id) ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center gap-1">
+                          💻 CYBER CRIME INVESTIGATION
+                        </span>
+                      ) : isIndianCase(activeCase.case.case_id) ? (
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-orange-500/20 text-orange-300 border border-orange-500/40">
                           🇮🇳 SOLVED CRIME
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                          📹 SURVEILLANCE STREAM
                         </span>
                       )}
                     </div>
@@ -798,7 +935,16 @@ export default function ForensicApp() {
                 </div>
 
                 {/* Section 65B Indian Evidence Act Certificate Banner for Indian Cases */}
-                {isIndianCase(activeCase.case.case_id) && (
+                {isCyberCase(activeCase.case.case_id) ? (
+                  <div className="mt-3.5 flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono">
+                    <Scale className="w-4 h-4 text-cyan-400" />
+                    <span className="font-bold text-cyan-300">Indian Evidence Act Section 65B &amp; IT Act 2000 Compliance:</span>
+                    <span className="text-slate-300 text-[11px]">Server forensic bitstreams, memory dumps &amp; network logs sealed via cryptographic dual-hash</span>
+                    <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold">
+                      COURT-ADMISSIBLE
+                    </span>
+                  </div>
+                ) : isIndianCase(activeCase.case.case_id) ? (
                   <div className="mt-3.5 flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-xs font-mono">
                     <Scale className="w-4 h-4 text-orange-400" />
                     <span className="font-bold text-orange-300">Indian Evidence Act Section 65B Compliance:</span>
@@ -807,7 +953,7 @@ export default function ForensicApp() {
                       COURT-ADMISSIBLE
                     </span>
                   </div>
-                )}
+                ) : null}
 
                 {activeCase.case.notes && (
                   <p className="text-xs text-slate-200 mt-3.5 italic bg-black/30 backdrop-blur-md p-3.5 rounded-xl border border-white/10 leading-relaxed">
@@ -1012,15 +1158,15 @@ export default function ForensicApp() {
               Indian Jurisprudence &amp; Law Enforcement Case Studies
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow">
-              Landmark Solved Indian Criminal Cases Cracked by Video Forensics
+              Landmark Solved Indian Investigations: Video Forensics &amp; Cyber Crime
             </h2>
             <p className="text-xs text-slate-300/80 mt-1 max-w-3xl leading-relaxed">
-              Real high-profile investigations in India where CCTV DVR extraction, multi-camera route triangulation, frame-by-frame biomechanical gait analysis, and Section 65B Indian Evidence Act certification were pivotal to solving the crime and securing convictions.
+              Real high-profile investigations in India where digital forensics, cyber incident response, memory analysis, CCTV DVR extraction, and Section 65B Indian Evidence Act certification were pivotal to solving the crime and securing convictions.
             </p>
           </div>
           <div className="px-4 py-2 rounded-2xl liquid-glass border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-2">
             <BadgeCheck className="w-4 h-4 text-emerald-400" />
-            <span>5 Active Solved Datasets Ready</span>
+            <span>{INDIAN_SOLVED_CASES.length} Active Solved Datasets Ready</span>
           </div>
         </div>
 
@@ -1035,11 +1181,11 @@ export default function ForensicApp() {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🇮🇳</span>
+                    <span className="text-xl">{(ic as any).category === 'cyber' ? '💻' : '🇮🇳'}</span>
                     <h3 className="text-lg font-bold text-white">{ic.name}</h3>
                   </div>
                   <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${ic.badgeColor}`}>
-                    SOLVED &amp; CONVICTED
+                    {(ic as any).category === 'cyber' ? 'CYBER FORENSICS SOLVED' : 'SOLVED & CONVICTED'}
                   </span>
                 </div>
 
@@ -1076,8 +1222,8 @@ export default function ForensicApp() {
                 <button
                   onClick={() => {
                     setSelectedCaseId(ic.id);
-                    setCaseFilter('indian');
-                    handleInspectEvidence(ic.id, 'EVD-001');
+                    setCaseFilter('all');
+                    handleInspectEvidence(ic.id);
                   }}
                   className="px-4 py-2 rounded-xl liquid-glass-button text-black font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow hover:scale-105 transition-all"
                 >
@@ -1261,47 +1407,109 @@ export default function ForensicApp() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowNewCase(false); }}
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex items-center justify-center p-4"
         >
-          <div className="liquid-glass border-white/20 rounded-3xl p-7 max-w-md w-full shadow-[0_25px_60px_rgba(0,0,0,0.85)]">
+          <div className="liquid-glass border-white/20 rounded-3xl p-7 max-w-lg w-full shadow-[0_25px_60px_rgba(0,0,0,0.85)] max-h-[92vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-1 flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-orange-400" />
               Initialize New Forensic Case
             </h3>
             <p className="text-xs text-slate-300/80 mb-4">
-              Registers case into SQLite and writes genesis entry to append-only custody log.
+              Registers case into persistent forensic storage engine and seals genesis entry to append-only custody chain.
             </p>
-            <form onSubmit={handleCreateCase} className="space-y-4">
+
+            {/* Case Classification Selector */}
+            <div className="mb-4">
+              <label className="block text-xs font-mono text-slate-300 mb-1.5">Forensic Case Classification *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewCaseType('cyber_crime')}
+                  className={`p-3 rounded-xl border text-xs font-mono flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    newCaseType === 'cyber_crime'
+                      ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200 font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                      : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>💻</span>
+                  <span>Cyber Crime</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewCaseType('surveillance')}
+                  className={`p-3 rounded-xl border text-xs font-mono flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                    newCaseType === 'surveillance'
+                      ? 'bg-orange-500/20 border-orange-400 text-orange-200 font-bold shadow-[0_0_15px_rgba(249,115,22,0.3)]'
+                      : 'bg-black/40 border-white/10 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>📹</span>
+                  <span>CCTV / Surveillance</span>
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateCase} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-mono text-slate-300 mb-1">Case Identifier *</label>
                 <input
                   type="text"
-                  placeholder="e.g. CASE-2026-002"
+                  placeholder={newCaseType === 'cyber_crime' ? 'e.g. CASE-CYBER-2026-001' : 'e.g. CASE-2026-002'}
                   value={newCaseId}
                   onChange={(e) => setNewCaseId(e.target.value)}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-mono focus:border-orange-400 focus:shadow-[0_0_15px_rgba(249,115,22,0.25)] outline-none transition-all"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-mono text-slate-300 mb-1">Lead Examiner *</label>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Lead Forensic Examiner *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Special Agent Scully"
+                  placeholder="e.g. Special Cyber Forensic Officer / Lead SIT Investigator"
                   value={newExaminer}
                   onChange={(e) => setNewExaminer(e.target.value)}
                   required
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-mono focus:border-orange-400 focus:shadow-[0_0_15px_rgba(249,115,22,0.25)] outline-none transition-all"
                 />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Investigating Agency / Wing</label>
+                  <input
+                    type="text"
+                    placeholder={newCaseType === 'cyber_crime' ? 'e.g. Cyber Crime Unit / CERT-In' : 'e.g. Police Crime Branch SIT'}
+                    value={newAgency}
+                    onChange={(e) => setNewAgency(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-mono focus:border-orange-400 focus:shadow-[0_0_15px_rgba(249,115,22,0.25)] outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-slate-300 mb-1">Court Jurisdiction</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. High Court / Special Sessions Court"
+                    value={newJurisdiction}
+                    onChange={(e) => setNewJurisdiction(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-mono focus:border-orange-400 focus:shadow-[0_0_15px_rgba(249,115,22,0.25)] outline-none transition-all"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-mono text-slate-300 mb-1">Case Notes / Seizure Details</label>
+                <label className="block text-xs font-mono text-slate-300 mb-1">Case Notes / Incident &amp; Seizure Details</label>
                 <textarea
                   rows={3}
-                  placeholder="Seized CCTV storage unit from facility entrance..."
+                  placeholder={
+                    newCaseType === 'cyber_crime'
+                      ? 'Compromised server disk bitstream, unauthorized remote desktop lateral pivot, memory dump extraction...'
+                      : 'Seized CCTV storage unit from facility entrance, multi-camera highway toll plaza feeds...'
+                  }
                   value={newNotes}
                   onChange={(e) => setNewNotes(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-white text-xs font-mono focus:border-orange-400 focus:shadow-[0_0_15px_rgba(249,115,22,0.25)] outline-none transition-all"
                 />
               </div>
+
               <div className="flex justify-end gap-2.5 pt-2">
                 <button
                   type="button"
@@ -1315,7 +1523,7 @@ export default function ForensicApp() {
                   disabled={loading}
                   className="px-5 py-2 rounded-xl liquid-glass-button text-black font-semibold text-xs cursor-pointer shadow-lg"
                 >
-                  {loading ? 'Creating...' : 'Create Case'}
+                  {loading ? 'Registering...' : 'Create Forensic Case'}
                 </button>
               </div>
             </form>

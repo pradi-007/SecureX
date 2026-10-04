@@ -44,6 +44,11 @@ export async function POST(req: NextRequest) {
         case_id: body.case_id,
         examiner: body.examiner,
         notes: body.notes || '',
+        case_type: body.case_type || 'surveillance',
+        name: body.name || body.case_id,
+        agency: body.agency || undefined,
+        jurisdiction: body.jurisdiction || undefined,
+        technique: body.technique || undefined,
       });
       return NextResponse.json(data);
     } else if (action === 'acquire_evidence') {
