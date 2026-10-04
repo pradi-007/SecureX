@@ -1,7 +1,85 @@
 {
   "version": "1.0",
-  "updated_at": "2026-10-04T06:18:44.616Z",
+  "updated_at": "2026-10-04T07:55:10.409Z",
   "cases": [
+    {
+      "case_id": "CASE-VERIFY-NOW-2026",
+      "case_type": "cyber_crime",
+      "name": "CASE-VERIFY-NOW-2026",
+      "examiner": "Lead Examiner",
+      "agency": "Special Cyber Forensics Division",
+      "jurisdiction": "High Court of Judicature & District Court",
+      "date": "October 2026",
+      "notes": "Recent check",
+      "created_utc": "2026-10-04T07:54:57.758Z",
+      "created_raw": "4/10/2026, 1:24:57 pm",
+      "tz_offset": "+05:30",
+      "case_dir": "cases/CASE-VERIFY-NOW-2026",
+      "evidence_count": 1,
+      "custody_entry_count": 2,
+      "verdict": "ACTIVE INVESTIGATION — IN LAWFUL PHYSICAL/DIGITAL CUSTODY",
+      "technique": "Volatile Memory & Network Infiltration Forensic Reconstruction",
+      "scope": "Digital Endpoints & Server Storage Bitstreams",
+      "evidence": [
+        {
+          "evidence_id": "EVD-001",
+          "case_id": "CASE-VERIFY-NOW-2026",
+          "source_path": "E:\\SecureX\\evidence\\1791100510408_crime_scene_snapshot.png",
+          "file_size": 26,
+          "md5": "8acbd97976881341a5867c34664205f9",
+          "sha256": "a2e93e735e884c4d225f7d44add8b6266ff0335050ac6556ea672c9e60699d76",
+          "acquired_utc": "2026-10-04T07:55:10.409Z",
+          "acquired_raw": "4/10/2026, 1:25:10 pm",
+          "tz_offset": "+05:30",
+          "examiner": "Lead Examiner",
+          "notes": "Photo of suspect terminal",
+          "preview_data_url": "data:image/png;base64,c2FtcGxlLWltYWdlLWNvbnRlbnQtYnl0ZXM=",
+          "is_image": true,
+          "file_type": "image/png"
+        }
+      ],
+      "custody": {
+        "is_valid": true,
+        "entry_count": 2,
+        "errors": [],
+        "entries": [
+          {
+            "entry_id": 1,
+            "case_id": "CASE-VERIFY-NOW-2026",
+            "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "timestamp_utc": "2026-10-04T07:54:57.758Z",
+            "timestamp_raw": "4/10/2026, 1:24:57 pm",
+            "tz_offset": "+05:30",
+            "examiner": "Lead Examiner",
+            "action": "GENESIS_CASE_INITIALIZED",
+            "file_hash": null,
+            "details": {
+              "notes": "Recent check"
+            },
+            "entry_hash": "8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a"
+          },
+          {
+            "entry_id": 2,
+            "case_id": "CASE-VERIFY-NOW-2026",
+            "prev_hash": "8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d9e8f7a",
+            "timestamp_utc": "2026-10-04T07:55:10.409Z",
+            "timestamp_raw": "4/10/2026, 1:25:10 pm",
+            "tz_offset": "+05:30",
+            "examiner": "Lead Examiner",
+            "action": "EVIDENCE_ACQUIRED_AND_SEALED",
+            "file_hash": {
+              "md5": "8acbd97976881341a5867c34664205f9",
+              "sha256": "a2e93e735e884c4d225f7d44add8b6266ff0335050ac6556ea672c9e60699d76"
+            },
+            "details": {
+              "evidence_id": "EVD-001",
+              "source_path": "E:\\SecureX\\evidence\\1791100510408_crime_scene_snapshot.png"
+            },
+            "entry_hash": "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e"
+          }
+        ]
+      }
+    },
     {
       "case_id": "CASE-CYBER-DEL-2022-AIIMS",
       "case_type": "cyber_crime",
