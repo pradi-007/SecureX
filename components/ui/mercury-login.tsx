@@ -2,7 +2,10 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Lock, KeyRound, ArrowLeft, Terminal, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Lock, KeyRound, ArrowLeft, Terminal, CheckCircle2, Sparkles, Copy, Check } from 'lucide-react';
+
+const DEFAULT_ID = 'EXAMINER-DVRX-01';
+const DEFAULT_KEY = 'dvrx@2026';
 
 interface MercuryLoginProps {
   systemNode?: string;
@@ -18,10 +21,11 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
   onLoginSuccess,
 }) => {
   const [mounted, setMounted] = useState(false);
-  const [userId, setUserId] = useState('');
-  const [sequenceKey, setSequenceKey] = useState('');
+  const [userId, setUserId] = useState(DEFAULT_ID);
+  const [sequenceKey, setSequenceKey] = useState(DEFAULT_KEY);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -63,20 +67,36 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [mounted]);
 
+  const handleAutoFill = () => {
+    setUserId(DEFAULT_ID);
+    setSequenceKey(DEFAULT_KEY);
+    setErrorMsg('');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId.trim()) {
+      setErrorMsg('Please specify your Examiner Node ID.');
+      return;
+    }
+    if (!sequenceKey.trim()) {
+      setErrorMsg('Please enter your sequence key / password.');
+      return;
+    }
+
+    setErrorMsg('');
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
       setAuthSuccess(true);
       if (onLoginSuccess) {
-        onLoginSuccess(userId || 'EXAMINER-DVRX-01');
+        onLoginSuccess(userId || DEFAULT_ID);
       } else {
         setTimeout(() => {
           window.location.href = '/#cases';
         }, 800);
       }
-    }, 1000);
+    }, 800);
   };
 
   return (
@@ -408,10 +428,48 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
           <div className="p-6 rounded-2xl bg-emerald-950/60 border border-emerald-500/50 text-center font-mono space-y-2">
             <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto animate-bounce" />
             <div className="text-white font-bold text-sm uppercase">Forensic Terminal Authenticated</div>
-            <p className="text-[11px] text-emerald-300">Establishing cryptographic session with custody ledger...</p>
+            <p className="text-[11px] text-emerald-300">Examiner: <span className="font-bold text-white">{userId}</span></p>
+            <p className="text-[10px] text-slate-400">Redirecting to DVRX Case Repository...</p>
           </div>
         ) : (
           <form autoComplete="off" onSubmit={handleSubmit}>
+            {/* Quick Credentials Info Card */}
+            <div className="mb-5 p-3.5 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-xs font-mono">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-orange-400 font-bold flex items-center gap-1.5 text-[11px]">
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Terminal Access Credentials:
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAutoFill}
+                  className="px-2.5 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 border border-orange-500/40 text-[10px] cursor-pointer transition-all flex items-center gap-1 font-semibold shadow"
+                >
+                  <Sparkles className="w-3 h-3 text-orange-300" />
+                  <span>Auto-Fill</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className="text-slate-400">ID:</span>
+                  <code className="text-white font-bold select-all bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
+                    {DEFAULT_ID}
+                  </code>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <span className="text-slate-400">Password:</span>
+                  <code className="text-orange-300 font-bold select-all bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
+                    {DEFAULT_KEY}
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            {errorMsg && (
+              <div className="mb-4 p-2.5 rounded-xl bg-red-950/60 border border-red-500/40 text-red-300 text-xs font-mono text-center">
+                {errorMsg}
+              </div>
+            )}
             <div className="form-group">
               <label>
                 <Terminal className="w-3 h-3 text-orange-400" />
