@@ -232,6 +232,10 @@ export default function ForensicApp() {
   const [verifying, setVerifying] = useState<boolean>(false);
   const [verifyReport, setVerifyReport] = useState<any>(null);
 
+  // Examiner Authentication & Authorization State
+  const [currentExaminer, setCurrentExaminer] = useState<{ user_id: string; name: string; agency: string } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
   // New Case Modal State
   const [showNewCase, setShowNewCase] = useState(false);
   const [newCaseId, setNewCaseId] = useState('');
@@ -354,6 +358,59 @@ export default function ForensicApp() {
   }, []);
 
   useEffect(() => {
+    const loadExaminerSession = () => {
+      try {
+        const raw = localStorage.getItem('dvrx_examiner_session');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.user_id) {
+            setCurrentExaminer(parsed);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to parse examiner session', e);
+      }
+      setCurrentExaminer(null);
+    };
+
+    loadExaminerSession();
+    window.addEventListener('storage', loadExaminerSession);
+    window.addEventListener('dvrx_auth_change', loadExaminerSession);
+    return () => {
+      window.removeEventListener('storage', loadExaminerSession);
+      window.removeEventListener('dvrx_auth_change', loadExaminerSession);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('dvrx_examiner_session');
+    } catch {}
+    setCurrentExaminer(null);
+    window.dispatchEvent(new Event('dvrx_auth_change'));
+  };
+
+  const handleOpenNewCaseModal = () => {
+    if (!currentExaminer) {
+      setShowAuthModal(true);
+      return;
+    }
+    setNewExaminer(currentExaminer.name || currentExaminer.user_id);
+    setNewAgency(currentExaminer.agency || '');
+    setShowNewCase(true);
+  };
+
+  const handleOpenAcquireModal = () => {
+    if (!currentExaminer) {
+      setShowAuthModal(true);
+      return;
+    }
+    setAcqExaminer(currentExaminer.name || currentExaminer.user_id);
+    setShowAcquire(true);
+  };
+
+  useEffect(() => {
     if (selectedCaseId) {
       fetchCaseDetails(selectedCaseId);
       setVerifyReport(null);
@@ -363,6 +420,10 @@ export default function ForensicApp() {
   // Create Case
   const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentExaminer) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!newCaseId || !newExaminer) return;
     setLoading(true);
     const targetCaseId = newCaseId.trim();
@@ -441,6 +502,10 @@ export default function ForensicApp() {
   // Acquire Evidence
   const handleAcquire = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentExaminer) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!selectedCaseId) return;
     setAcquiring(true);
     try {
@@ -654,6 +719,7 @@ export default function ForensicApp() {
         setShowNewCase(false);
         setShowAcquire(false);
         setInspectModalOpen(false);
+        setShowAuthModal(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -789,16 +855,32 @@ export default function ForensicApp() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="px-4 py-2.5 rounded-2xl liquid-glass text-orange-300 font-mono text-xs flex items-center gap-1.5 cursor-pointer hover:border-orange-400/50 hover:text-white transition-all shadow"
-            >
-              <KeyRound className="w-3.5 h-3.5 text-orange-400" />
-              <span>DVRX Login</span>
-            </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            {currentExaminer ? (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono text-emerald-300 backdrop-blur-md shadow">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-semibold text-white">{currentExaminer.user_id}</span>
+                <span className="text-slate-400 hidden sm:inline text-[11px]">({currentExaminer.agency})</span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="ml-1 px-2 py-0.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-[10px] cursor-pointer transition-all"
+                  title="Log out of examiner terminal"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="px-4 py-2.5 rounded-2xl liquid-glass text-orange-300 font-mono text-xs flex items-center gap-1.5 cursor-pointer hover:border-orange-400/50 hover:text-white transition-all shadow"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-orange-400" />
+                <span>DVRX Login / Sign Up</span>
+              </Link>
+            )}
             <button
-              onClick={() => setShowNewCase(true)}
+              onClick={handleOpenNewCaseModal}
               className="px-5 py-2.5 rounded-2xl liquid-glass-button text-black font-semibold text-xs flex items-center gap-2 cursor-pointer shadow-lg"
             >
               <PlusCircle className="w-4 h-4" />
@@ -987,7 +1069,7 @@ export default function ForensicApp() {
                       </button>
                     )}
                     <button
-                      onClick={() => setShowAcquire(true)}
+                      onClick={handleOpenAcquireModal}
                       className="px-4 py-2 rounded-xl liquid-glass-secondary-button text-xs text-slate-200 font-medium flex items-center gap-1.5 cursor-pointer shadow"
                     >
                       <PlusCircle className="w-3.5 h-3.5 text-orange-400" />
@@ -1681,6 +1763,53 @@ export default function ForensicApp() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Examiner Authentication Required Modal */}
+      {showAuthModal && (
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAuthModal(false); }}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4"
+        >
+          <div className="liquid-glass border-red-500/30 rounded-3xl p-7 max-w-md w-full shadow-[0_25px_60px_rgba(0,0,0,0.9)] text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-amber-500" />
+            
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4 text-red-400 shadow-[0_0_25px_rgba(239,68,68,0.25)]">
+              <Lock className="w-7 h-7 animate-pulse" />
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-[11px] font-mono text-red-300 uppercase tracking-wider mb-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
+              Forensic Authorization Required
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-2 tracking-tight">
+              Examiner Login Required
+            </h3>
+            
+            <p className="text-xs text-slate-300/90 leading-relaxed mb-6 font-mono">
+              Under Indian Information Technology Act &amp; Bharatiya Sakshya Adhiniyam (BSA 2023) standards, you must be logged in as an authorized forensic examiner to register new cases or submit digital evidence to the custody ledger.
+            </p>
+
+            <div className="space-y-3">
+              <Link
+                href="/login"
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-mono font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-all cursor-pointer"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>Login or Register New Examiner</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="w-full py-2.5 px-4 rounded-xl liquid-glass-secondary-button text-xs text-slate-400 hover:text-white font-mono cursor-pointer transition-all"
+              >
+                Cancel &amp; Continue as Viewer
+              </button>
+            </div>
           </div>
         </div>
       )}

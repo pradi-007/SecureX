@@ -1,0 +1,16 @@
+[
+  {
+    "user_id": "EXAMINER-DVRX-01",
+    "name": "Special Cyber Forensic Specialist",
+    "agency": "National Digital Forensics & Cyber Command",
+    "password_hash": "6ca31616ef421b5be1969e71ecfcbaeb7aeb1b6c7cb319d6d3d443907722420f",
+    "created_at": "2026-10-04T05:00:00Z"
+  },
+  {
+    "user_id": "ADMIN",
+    "name": "Lead Forensics Director",
+    "agency": "Cyber Crime Investigation Bureau",
+    "password_hash": "6ca31616ef421b5be1969e71ecfcbaeb7aeb1b6c7cb319d6d3d443907722420f",
+    "created_at": "2026-10-04T05:00:00Z"
+  }
+]
