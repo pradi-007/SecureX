@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PrismaHero } from '@/components/ui/prisma-hero';
 import {
   ShieldCheck,
@@ -729,6 +730,7 @@ export default function ForensicApp() {
             { label: "Custody Ledger", href: "#custody" },
             { label: "Vendor Matrix", href: "#vendors" },
             { label: "3D Machine View", href: "/factory" },
+            { label: "Examiner Login", href: "/login" },
           ]}
         />
       </div>
@@ -788,6 +790,13 @@ export default function ForensicApp() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2.5 rounded-2xl liquid-glass text-orange-300 font-mono text-xs flex items-center gap-1.5 cursor-pointer hover:border-orange-400/50 hover:text-white transition-all shadow"
+            >
+              <KeyRound className="w-3.5 h-3.5 text-orange-400" />
+              <span>DVRX Login</span>
+            </Link>
             <button
               onClick={() => setShowNewCase(true)}
               className="px-5 py-2.5 rounded-2xl liquid-glass-button text-black font-semibold text-xs flex items-center gap-2 cursor-pointer shadow-lg"
