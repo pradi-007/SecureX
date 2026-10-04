@@ -237,6 +237,9 @@ export default function ForensicApp() {
   const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Case Search State
+  const [caseSearchQuery, setCaseSearchQuery] = useState('');
+
   // New Case Modal State
   const [showNewCase, setShowNewCase] = useState(false);
   const [newCaseId, setNewCaseId] = useState('');
@@ -311,14 +314,41 @@ export default function ForensicApp() {
   };
 
   const filteredCases = cases.filter((c) => {
-    // Crucial: The currently selected case is always visible so newly added cases never disappear
-    if (c.case_id === selectedCaseId) return true;
+    // If search query is active, check matching fields
+    if (caseSearchQuery.trim()) {
+      const q = caseSearchQuery.toLowerCase().trim();
+      const matchId = (c.case_id || '').toLowerCase().includes(q);
+      const matchExaminer = (c.examiner || '').toLowerCase().includes(q);
+      const matchNotes = (c.notes || '').toLowerCase().includes(q);
+      if (!matchId && !matchExaminer && !matchNotes) {
+        return false;
+      }
+    } else {
+      // Crucial: The currently selected case is always visible so newly added cases never disappear
+      if (c.case_id === selectedCaseId) return true;
+    }
+
     if (caseFilter === 'cyber') return isCyberCase(c);
     if (caseFilter === 'surveillance') return !isCyberCase(c);
     if (caseFilter === 'indian') return isIndianCase(c.case_id);
     if (caseFilter === 'lab') return !isIndianCase(c.case_id);
     return true;
   });
+
+  // When search query changes, auto-select first matching case
+  useEffect(() => {
+    if (caseSearchQuery.trim()) {
+      const q = caseSearchQuery.toLowerCase().trim();
+      const match = cases.find((c) =>
+        (c.case_id || '').toLowerCase().includes(q) ||
+        (c.examiner || '').toLowerCase().includes(q) ||
+        (c.notes || '').toLowerCase().includes(q)
+      );
+      if (match && match.case_id !== selectedCaseId) {
+        setSelectedCaseId(match.case_id);
+      }
+    }
+  }, [caseSearchQuery, cases]);
 
   // Load Cases
   const fetchCases = async () => {
@@ -922,8 +952,50 @@ export default function ForensicApp() {
           </div>
         </div>
 
+        {/* Case Search Bar & Discovery Row */}
+        <div className="pt-5 pb-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-orange-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={caseSearchQuery}
+                onChange={(e) => setCaseSearchQuery(e.target.value)}
+                placeholder="Search cases by Case ID, Examiner, Crime Category, Notes..."
+                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/15 text-white placeholder-slate-400 text-xs font-mono outline-none focus:border-orange-400 focus:shadow-[0_0_20px_rgba(249,115,22,0.25)] transition-all"
+              />
+              {caseSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setCaseSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10 cursor-pointer transition-colors"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {caseSearchQuery && (
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="px-3 py-1.5 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-300 text-xs font-mono flex items-center gap-1.5 shadow">
+                  <Search className="w-3 h-3 text-orange-400" />
+                  <span>{filteredCases.length} case{filteredCases.length === 1 ? '' : 's'} found</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCaseSearchQuery('')}
+                  className="text-xs font-mono text-slate-400 hover:text-white underline cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Filter Pills for Cases */}
-        <div className="flex flex-wrap items-center gap-2 pt-4 pb-1">
+        <div className="flex flex-wrap items-center gap-2 pt-3 pb-1">
           <button
             onClick={() => setCaseFilter('all')}
             className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -981,38 +1053,60 @@ export default function ForensicApp() {
           </button>
         </div>
 
+        {/* Empty Search Result State */}
+        {filteredCases.length === 0 && (
+          <div className="my-4 p-8 rounded-2xl bg-white/5 border border-white/10 text-center font-mono">
+            <Search className="w-8 h-8 text-orange-400 mx-auto mb-2 opacity-60" />
+            <p className="text-sm text-white font-semibold">No forensic cases found matching &quot;{caseSearchQuery}&quot;</p>
+            <p className="text-xs text-slate-400 mt-1">Try searching by case ID (e.g. &apos;AIIMS&apos;, &apos;COSMOS&apos;, &apos;CASE-&apos;) or clearing your search query.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setCaseSearchQuery('');
+                setCaseFilter('all');
+              }}
+              className="mt-3 px-4 py-2 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-xs font-semibold cursor-pointer transition-all inline-flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Clear Search Filter</span>
+            </button>
+          </div>
+        )}
+
         {/* Case Selector Tabs */}
-        <div className="flex items-center gap-2.5 overflow-x-auto py-3">
-          {filteredCases.map((c) => {
-            const isCyber = isCyberCase(c);
-            const isInd = isIndianCase(c.case_id);
-            return (
-              <button
-                key={c.case_id}
-                onClick={() => setSelectedCaseId(c.case_id)}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-medium transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                  selectedCaseId === c.case_id
-                    ? isCyber
-                      ? 'liquid-glass-accent text-cyan-200 border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
-                      : 'liquid-glass-accent text-orange-200 border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.25)]'
-                    : 'liquid-glass text-slate-400 hover:text-white hover:border-white/25'
-                }`}
-              >
-                {isCyber ? (
-                  <span className="text-cyan-400 text-sm">💻</span>
-                ) : isInd ? (
-                  <span className="text-sm">🇮🇳</span>
-                ) : (
-                  <FolderOpen className="w-3.5 h-3.5 text-orange-400" />
-                )}
-                <span>{c.case_id}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-slate-300 border border-white/10">
-                  {c.evidence_count} evd
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        {filteredCases.length > 0 && (
+          <div className="flex items-center gap-2.5 overflow-x-auto py-3">
+            {filteredCases.map((c) => {
+              const isCyber = isCyberCase(c);
+              const isInd = isIndianCase(c.case_id);
+              return (
+                <button
+                  key={c.case_id}
+                  onClick={() => setSelectedCaseId(c.case_id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-mono font-medium transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                    selectedCaseId === c.case_id
+                      ? isCyber
+                        ? 'liquid-glass-accent text-cyan-200 border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.25)]'
+                        : 'liquid-glass-accent text-orange-200 border-orange-400/50 shadow-[0_0_20px_rgba(249,115,22,0.25)]'
+                      : 'liquid-glass text-slate-400 hover:text-white hover:border-white/25'
+                  }`}
+                >
+                  {isCyber ? (
+                    <span className="text-cyan-400 text-sm">💻</span>
+                  ) : isInd ? (
+                    <span className="text-sm">🇮🇳</span>
+                  ) : (
+                    <FolderOpen className="w-3.5 h-3.5 text-orange-400" />
+                  )}
+                  <span>{c.case_id}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/40 text-slate-300 border border-white/10">
+                    {c.evidence_count} evd
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Active Case Deck */}
         {activeCase ? (
