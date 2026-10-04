@@ -12,5 +12,12 @@
     "agency": "Cyber Crime Investigation Bureau",
     "password_hash": "6ca31616ef421b5be1969e71ecfcbaeb7aeb1b6c7cb319d6d3d443907722420f",
     "created_at": "2026-10-04T05:00:00Z"
+  },
+  {
+    "user_id": "001",
+    "name": "Special Examiner 001",
+    "agency": "Digital Forensics & Cyber Intelligence",
+    "password_hash": "9cc17e1ef992289cd2347975774fb2ffe598e03ea6d2f442ede2c40970e0c6af",
+    "created_at": "2026-10-04T05:00:00Z"
   }
 ]

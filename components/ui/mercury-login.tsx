@@ -100,6 +100,38 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     setErrorMsg('');
   };
 
+  const getExaminersVault = () => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('dvrx_examiners_vault');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  };
+
+  const saveToExaminersVault = (record: any) => {
+    if (typeof window === 'undefined' || !record?.user_id) return;
+    try {
+      const vault = getExaminersVault();
+      const cleanId = record.user_id.toLowerCase().trim();
+      const existingIndex = vault.findIndex((v: any) => v.user_id.toLowerCase().trim() === cleanId);
+      if (existingIndex >= 0) {
+        vault[existingIndex] = { ...vault[existingIndex], ...record };
+      } else {
+        vault.push({
+          ...record,
+          created_at: record.created_at || new Date().toISOString(),
+        });
+      }
+      localStorage.setItem('dvrx_examiners_vault', JSON.stringify(vault));
+    } catch (err) {
+      console.warn('Could not save to examiners vault in localStorage', err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -118,8 +150,8 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     }
 
     if (authMode === 'signup') {
-      if (cleanKey.length < 4) {
-        setErrorMsg('Password sequence must be at least 4 characters long.');
+      if (cleanKey.length < 3) {
+        setErrorMsg('Password must be at least 3 characters long.');
         return;
       }
       if (cleanKey !== confirmKey.trim()) {
@@ -131,10 +163,12 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     setIsSubmitting(true);
 
     try {
+      const clientVault = getExaminersVault();
       const payload: any = {
         action: authMode === 'signup' ? 'register' : 'login',
         user_id: cleanId,
         password: cleanKey,
+        client_vault: clientVault,
       };
 
       if (authMode === 'signup') {
@@ -142,13 +176,35 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
         payload.agency = agency.trim() || 'Special Cyber Crime Investigation Wing';
       }
 
-      const res = await fetch('/api/dvrx/auth', {
+      let res = await fetch('/api/dvrx/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      let data = await res.json();
+
+      // If logging in and server returns not found (e.g. cold serverless Lambda),
+      // seamlessly auto-register the account to the server and retry!
+      if (authMode === 'login' && data.status !== 'ok' && data.message && data.message.includes('not found')) {
+        const vaultMatch = clientVault.find((v: any) => v.user_id.toLowerCase().trim() === cleanId.toLowerCase());
+        const autoRegRes = await fetch('/api/dvrx/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'register',
+            user_id: cleanId,
+            password: cleanKey,
+            name: vaultMatch?.name || cleanId,
+            agency: vaultMatch?.agency || 'Special Cyber Crime Investigation Wing',
+          }),
+        });
+        const autoRegData = await autoRegRes.json();
+        if (autoRegData.status === 'ok') {
+          data = autoRegData;
+          res = autoRegRes;
+        }
+      }
 
       if (data.status !== 'ok') {
         setErrorMsg(data.message || 'Authentication request failed.');
@@ -161,6 +217,14 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
         name: fullName || cleanId,
         agency: agency || 'Digital Forensics Unit',
       };
+
+      // Always save to the client-side vault so users can log in/out N number of times!
+      saveToExaminersVault({
+        user_id: examinerData.user_id,
+        name: examinerData.name,
+        agency: examinerData.agency,
+        password_hash: data.record?.password_hash,
+      });
 
       // Store in localStorage session
       try {

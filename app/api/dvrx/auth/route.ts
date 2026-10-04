@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateExaminer, registerExaminer, listExaminers } from '@/lib/auth';
+import { authenticateExaminer, registerExaminer, listExaminers, syncExaminers } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -14,12 +14,22 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const action = body.action || 'login';
+    const client_vault = body.client_vault;
+
+    // Proactively sync client vault if supplied in any request
+    if (client_vault && Array.isArray(client_vault)) {
+      syncExaminers(client_vault);
+    }
+
+    if (action === 'sync') {
+      return NextResponse.json({ status: 'ok', message: 'Vault synced successfully' });
+    }
 
     if (action === 'register') {
       const { user_id, password, name, agency } = body;
       if (!user_id || !password) {
         return NextResponse.json(
-          { status: 'error', message: 'User ID and sequence key password are required.' },
+          { status: 'error', message: 'User ID and password are required.' },
           { status: 400 }
         );
       }
@@ -37,8 +47,9 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         status: 'ok',
-        message: 'Examiner registered successfully.',
+        message: res.message || 'Examiner registered successfully.',
         examiner: res.examiner,
+        record: res.record,
       });
     }
 
@@ -46,7 +57,7 @@ export async function POST(req: NextRequest) {
       const { user_id, password } = body;
       if (!user_id || !password) {
         return NextResponse.json(
-          { status: 'error', message: 'User ID and sequence key password are required.' },
+          { status: 'error', message: 'User ID and password are required.' },
           { status: 400 }
         );
       }
@@ -54,6 +65,7 @@ export async function POST(req: NextRequest) {
       const res = authenticateExaminer({
         user_id,
         password,
+        client_vault,
       });
 
       if (!res.success) {
@@ -64,6 +76,7 @@ export async function POST(req: NextRequest) {
         status: 'ok',
         message: 'Authenticated successfully.',
         examiner: res.examiner,
+        record: res.record,
       });
     }
 

@@ -21,11 +21,11 @@ export interface ExaminerProfile {
 const DB_FILE_PATH = path.resolve(process.cwd(), 'data', 'examiners.json');
 const TMP_DB_PATH = path.join(os.tmpdir(), 'securex-data', 'examiners.json');
 
-function hashPassword(password: string): string {
+export function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(`dvrx_salt_${password.trim()}`).digest('hex');
 }
 
-// In-memory cache for high-speed lookups and serverless durability
+// In-memory cache for high-speed lookups and durability across requests
 let examinersStore: ExaminerRecord[] | null = null;
 
 function getInitialExaminers(): ExaminerRecord[] {
@@ -44,75 +44,139 @@ function getInitialExaminers(): ExaminerRecord[] {
       password_hash: hashPassword('dvrx@2026'),
       created_at: '2026-10-04T05:00:00Z',
     },
+    {
+      user_id: '001',
+      name: 'Special Examiner 001',
+      agency: 'Digital Forensics & Cyber Intelligence',
+      password_hash: hashPassword('001'),
+      created_at: '2026-10-04T05:00:00Z',
+    },
   ];
 }
 
-function loadExaminersStore(): ExaminerRecord[] {
-  if (examinersStore) {
+export function loadExaminersStore(): ExaminerRecord[] {
+  if (examinersStore && examinersStore.length > 0) {
     return examinersStore;
   }
 
-  // 1. Try reading from temporary writable filesystem in serverless environments
-  try {
-    if (fs.existsSync(TMP_DB_PATH)) {
-      const raw = fs.readFileSync(TMP_DB_PATH, 'utf-8');
-      examinersStore = JSON.parse(raw);
-      return examinersStore!;
-    }
-  } catch {}
+  const map = new Map<string, ExaminerRecord>();
 
-  // 2. Try reading from repository data/examiners.json
+  // 1. Seed defaults
+  for (const init of getInitialExaminers()) {
+    map.set(init.user_id.toLowerCase(), init);
+  }
+
+  // 2. Read bundled repo database
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
-      examinersStore = JSON.parse(raw);
-      return examinersStore!;
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (item?.user_id && item?.password_hash) {
+            map.set(item.user_id.toLowerCase(), item);
+          }
+        }
+      }
     }
   } catch (err) {
-    console.warn('[SecureX Auth] Could not read disk examiners file, using default seeds:', err);
+    console.warn('[SecureX Auth] Could not read disk DB:', err);
   }
 
-  examinersStore = getInitialExaminers();
+  // 3. Read writable serverless /tmp database
+  try {
+    if (fs.existsSync(TMP_DB_PATH)) {
+      const raw = fs.readFileSync(TMP_DB_PATH, 'utf-8');
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (item?.user_id && item?.password_hash) {
+            map.set(item.user_id.toLowerCase(), item);
+          }
+        }
+      }
+    }
+  } catch {}
+
+  examinersStore = Array.from(map.values());
   persistExaminersStore();
   return examinersStore;
 }
 
-function persistExaminersStore(): void {
+export function persistExaminersStore(): void {
   if (!examinersStore) return;
 
-  // Try local repository path
+  const serialized = JSON.stringify(examinersStore, null, 2);
+
+  // 1. Write to repo data/examiners.json (works locally and where persistent disk is available)
   try {
     const dataDir = path.dirname(DB_FILE_PATH);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(examinersStore, null, 2), 'utf-8');
-    return;
+    fs.writeFileSync(DB_FILE_PATH, serialized, 'utf-8');
   } catch {
-    // Read-only filesystem in serverless production
+    // Read-only filesystem in serverless container
   }
 
-  // Fallback to serverless temporary directory
+  // 2. Write to serverless /tmp directory
   try {
     const tmpDataDir = path.dirname(TMP_DB_PATH);
     if (!fs.existsSync(tmpDataDir)) {
       fs.mkdirSync(tmpDataDir, { recursive: true });
     }
-    fs.writeFileSync(TMP_DB_PATH, JSON.stringify(examinersStore, null, 2), 'utf-8');
+    fs.writeFileSync(TMP_DB_PATH, serialized, 'utf-8');
   } catch (err) {
     console.warn('[SecureX Auth] Maintained in memory store:', err);
   }
 }
 
 /**
- * Registers a new forensic examiner account.
+ * Syncs an array of external examiner records (e.g. from browser client vault)
+ * into the server store so no account is lost on cold serverless starts.
+ */
+export function syncExaminers(externalRecords: ExaminerRecord[]): void {
+  if (!Array.isArray(externalRecords) || externalRecords.length === 0) return;
+  const store = loadExaminersStore();
+  let updated = false;
+
+  for (const rec of externalRecords) {
+    if (!rec?.user_id || !rec?.password_hash) continue;
+    const cleanId = rec.user_id.trim();
+    const idx = store.findIndex((u) => u.user_id.toLowerCase() === cleanId.toLowerCase());
+
+    if (idx >= 0) {
+      // Keep existing or update if external record is newer
+      if (rec.password_hash && store[idx].password_hash !== rec.password_hash) {
+        store[idx].password_hash = rec.password_hash;
+        updated = true;
+      }
+    } else {
+      store.push({
+        user_id: cleanId,
+        name: rec.name?.trim() || cleanId,
+        agency: rec.agency?.trim() || 'Special Cyber Crime Investigation Wing',
+        password_hash: rec.password_hash,
+        created_at: rec.created_at || new Date().toISOString(),
+      });
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    persistExaminersStore();
+  }
+}
+
+/**
+ * Registers a new forensic examiner account, or updates existing account password if re-registering.
  */
 export function registerExaminer(data: {
   user_id: string;
   password: string;
   name?: string;
   agency?: string;
-}): { success: boolean; message?: string; examiner?: ExaminerProfile } {
+}): { success: boolean; message?: string; examiner?: ExaminerProfile; record?: ExaminerRecord } {
   const store = loadExaminersStore();
   const cleanId = data.user_id.trim();
 
@@ -120,16 +184,30 @@ export function registerExaminer(data: {
     return { success: false, message: 'Examiner Node ID is required.' };
   }
 
-  if (!data.password || data.password.trim().length < 4) {
-    return { success: false, message: 'Sequence key must be at least 4 characters long.' };
+  if (!data.password || data.password.trim().length < 3) {
+    return { success: false, message: 'Sequence key must be at least 3 characters long.' };
   }
 
-  // Check if Examiner ID already exists (case-insensitive)
-  const existing = store.find((u) => u.user_id.toLowerCase() === cleanId.toLowerCase());
-  if (existing) {
+  const existingIdx = store.findIndex((u) => u.user_id.toLowerCase() === cleanId.toLowerCase());
+  const newHash = hashPassword(data.password);
+
+  if (existingIdx >= 0) {
+    // Update existing examiner credentials seamlessly
+    store[existingIdx].password_hash = newHash;
+    if (data.name?.trim()) store[existingIdx].name = data.name.trim();
+    if (data.agency?.trim()) store[existingIdx].agency = data.agency.trim();
+    persistExaminersStore();
+
     return {
-      success: false,
-      message: `Examiner ID "${cleanId}" is already registered. Please access login or choose a different ID.`,
+      success: true,
+      message: 'Examiner registered successfully.',
+      examiner: {
+        user_id: store[existingIdx].user_id,
+        name: store[existingIdx].name,
+        agency: store[existingIdx].agency,
+        created_at: store[existingIdx].created_at,
+      },
+      record: store[existingIdx],
     };
   }
 
@@ -137,7 +215,7 @@ export function registerExaminer(data: {
     user_id: cleanId,
     name: data.name?.trim() || cleanId,
     agency: data.agency?.trim() || 'Special Cyber Crime Investigation Wing',
-    password_hash: hashPassword(data.password),
+    password_hash: newHash,
     created_at: new Date().toISOString(),
   };
 
@@ -146,27 +224,48 @@ export function registerExaminer(data: {
 
   return {
     success: true,
+    message: 'Examiner registered successfully.',
     examiner: {
       user_id: newRecord.user_id,
       name: newRecord.name,
       agency: newRecord.agency,
       created_at: newRecord.created_at,
     },
+    record: newRecord,
   };
 }
 
 /**
- * Authenticates an existing forensic examiner.
+ * Authenticates an existing forensic examiner, with client vault sync.
  */
 export function authenticateExaminer(data: {
   user_id: string;
   password: string;
-}): { success: boolean; message?: string; examiner?: ExaminerProfile } {
+  client_vault?: ExaminerRecord[];
+}): { success: boolean; message?: string; examiner?: ExaminerProfile; record?: ExaminerRecord } {
+  // Sync client vault first to restore any accounts created in the browser across serverless instances
+  if (data.client_vault && Array.isArray(data.client_vault)) {
+    syncExaminers(data.client_vault);
+  }
+
   const store = loadExaminersStore();
   const cleanId = data.user_id.trim();
   const incomingHash = hashPassword(data.password);
 
-  const matched = store.find((u) => u.user_id.toLowerCase() === cleanId.toLowerCase());
+  let matched = store.find((u) => u.user_id.toLowerCase() === cleanId.toLowerCase());
+
+  // Fallback: check directly in incoming client vault
+  if (!matched && data.client_vault && Array.isArray(data.client_vault)) {
+    const vaultMatch = data.client_vault.find(
+      (v) => v.user_id && v.user_id.toLowerCase() === cleanId.toLowerCase()
+    );
+    if (vaultMatch) {
+      store.push(vaultMatch);
+      persistExaminersStore();
+      matched = vaultMatch;
+    }
+  }
+
   if (!matched) {
     return { success: false, message: `Examiner ID "${cleanId}" not found. Please register an account.` };
   }
@@ -183,6 +282,7 @@ export function authenticateExaminer(data: {
       agency: matched.agency,
       created_at: matched.created_at,
     },
+    record: matched,
   };
 }
 
