@@ -6,20 +6,16 @@ import {
   ShieldCheck,
   Lock,
   KeyRound,
-  ArrowLeft,
   Terminal,
   CheckCircle2,
-  Sparkles,
   UserPlus,
   User,
   Building,
   AlertCircle,
   Eye,
   EyeOff,
+  Sparkles,
 } from 'lucide-react';
-
-const DEFAULT_ID = 'EXAMINER-DVRX-01';
-const DEFAULT_KEY = 'dvrx@2026';
 
 interface MercuryLoginProps {
   systemNode?: string;
@@ -37,9 +33,9 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
   const [mounted, setMounted] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
-  // Form fields
-  const [userId, setUserId] = useState(DEFAULT_ID);
-  const [sequenceKey, setSequenceKey] = useState(DEFAULT_KEY);
+  // Form fields (clean empty start)
+  const [userId, setUserId] = useState('');
+  const [sequenceKey, setSequenceKey] = useState('');
   const [confirmKey, setConfirmKey] = useState('');
   const [fullName, setFullName] = useState('');
   const [agency, setAgency] = useState('');
@@ -52,6 +48,16 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
 
   useEffect(() => {
     setMounted(true);
+    // If examiner is already authenticated, redirect straight to the main forensic dashboard
+    try {
+      const raw = localStorage.getItem('dvrx_examiner_session');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.user_id) {
+          window.location.replace('/');
+        }
+      }
+    } catch {}
   }, []);
 
   // Generate static random values once per mount to prevent hydration errors
@@ -89,22 +95,9 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     return () => document.removeEventListener('mousemove', handleMouseMove);
   }, [mounted]);
 
-  const handleAutoFill = () => {
-    setUserId(DEFAULT_ID);
-    setSequenceKey(DEFAULT_KEY);
-    setErrorMsg('');
-  };
-
   const handleModeSwitch = (mode: 'login' | 'signup') => {
     setAuthMode(mode);
     setErrorMsg('');
-    if (mode === 'signup') {
-      if (userId === DEFAULT_ID) setUserId('');
-      if (sequenceKey === DEFAULT_KEY) setSequenceKey('');
-    } else {
-      if (!userId) setUserId(DEFAULT_ID);
-      if (!sequenceKey) setSequenceKey(DEFAULT_KEY);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,7 +108,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
     const cleanKey = sequenceKey.trim();
 
     if (!cleanId) {
-      setErrorMsg('Please specify your Examiner Node ID.');
+      setErrorMsg('Please specify your Examiner Node ID / Username.');
       return;
     }
 
@@ -146,7 +139,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
 
       if (authMode === 'signup') {
         payload.name = fullName.trim() || cleanId;
-        payload.agency = agency.trim() || 'Digital Forensics & Cyber Command';
+        payload.agency = agency.trim() || 'Special Cyber Crime Investigation Wing';
       }
 
       const res = await fetch('/api/dvrx/auth', {
@@ -193,8 +186,8 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
         onLoginSuccess(examinerData.user_id);
       } else {
         setTimeout(() => {
-          window.location.href = '/#cases';
-        }, 1000);
+          window.location.href = '/';
+        }, 800);
       }
     } catch (err: any) {
       setErrorMsg(`Connection error: ${err.message || 'Could not communicate with DVRX Auth engine'}`);
@@ -267,7 +260,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
           100% { transform: translate(5vw, -10vh) scale(1.1); }
         }
 
-        /* Top Home Link */
+        /* Top Security Banner */
         .top-nav {
           position: fixed;
           top: 20px;
@@ -279,19 +272,11 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
           font-family: 'Space Mono', monospace;
           font-size: 11px;
           color: var(--text-dim);
-          text-decoration: none;
-          transition: all 0.3s;
           background: rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(12px);
-          padding: 8px 16px;
+          padding: 8px 18px;
           border-radius: 9999px;
           border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .top-nav:hover {
-          color: var(--accent);
-          border-color: rgba(249, 115, 22, 0.5);
-          background: rgba(249, 115, 22, 0.1);
         }
 
         /* Interface Container */
@@ -300,8 +285,8 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
           z-index: 10;
           width: 100%;
           max-width: 480px;
-          padding: 36px 32px;
-          background: rgba(10, 15, 28, 0.75);
+          padding: 38px 32px;
+          background: rgba(10, 15, 28, 0.78);
           backdrop-filter: blur(28px);
           -webkit-backdrop-filter: blur(28px);
           border: 1px solid rgba(255, 255, 255, 0.14);
@@ -427,9 +412,9 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
           background: rgba(249, 115, 22, 0.05);
         }
 
-        /* The Mercury Button */
+        /* The Button */
         .submit-wrap {
-          margin-top: 28px;
+          margin-top: 26px;
           position: relative;
         }
 
@@ -466,22 +451,13 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
 
         /* Utility */
         .footer-nav {
-          margin-top: 28px;
-          display: flex;
-          justify-content: space-between;
+          margin-top: 26px;
+          text-align: center;
           font-family: 'Space Mono', monospace;
           font-size: 10px;
-          letter-spacing: 1px;
-        }
-
-        .footer-nav a {
+          letter-spacing: 1.5px;
           color: var(--text-dim);
-          text-decoration: none;
-          transition: color 0.3s;
-        }
-
-        .footer-nav a:hover {
-          color: #f97316;
+          text-transform: uppercase;
         }
 
         /* SVG Filter Definition Hidden Element */
@@ -492,11 +468,11 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
         }
       `}</style>
 
-      {/* Navigation Return to Forensic Dashboard */}
-      <Link href="/" className="top-nav">
-        <ArrowLeft className="w-3.5 h-3.5" />
-        <span>Return to Forensic Dashboard</span>
-      </Link>
+      {/* Top Security Banner */}
+      <div className="top-nav select-none">
+        <ShieldCheck className="w-3.5 h-3.5 text-orange-400" />
+        <span>DVRX Forensic Gateway · Clearance Required</span>
+      </div>
 
       <svg className="svg-filter-hidden" aria-hidden="true">
         <defs>
@@ -577,54 +553,20 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
               <p>Agency: <span className="text-slate-300">{successExaminer?.agency}</span></p>
             </div>
             <p className="text-[11px] text-slate-400 animate-pulse">
-              Establishing tamper-evident session &amp; loading Case Manager...
+              Authentication verified. Opening Main Forensic Dashboard...
             </p>
           </div>
         ) : (
           <form autoComplete="off" onSubmit={handleSubmit}>
-            {/* Quick Credentials Info Card for Login Mode */}
-            {authMode === 'login' && (
-              <div className="mb-5 p-3.5 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-xs font-mono">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-orange-400 font-bold flex items-center gap-1.5 text-[11px]">
-                    <KeyRound className="w-3.5 h-3.5" />
-                    Default Forensic Credentials:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAutoFill}
-                    className="px-2.5 py-1 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 border border-orange-500/40 text-[10px] cursor-pointer transition-all flex items-center gap-1 font-semibold shadow"
-                  >
-                    <Sparkles className="w-3 h-3 text-orange-300" />
-                    <span>Auto-Fill</span>
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-2 border-t border-white/10">
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <span className="text-slate-400">ID:</span>
-                    <code className="text-white font-bold select-all bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
-                      {DEFAULT_ID}
-                    </code>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <span className="text-slate-400">Key:</span>
-                    <code className="text-orange-300 font-bold select-all bg-black/40 px-1.5 py-0.5 rounded border border-white/10">
-                      {DEFAULT_KEY}
-                    </code>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Registration Banner Info */}
             {authMode === 'signup' && (
               <div className="mb-5 p-3.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono">
                 <div className="text-cyan-300 font-bold flex items-center gap-1.5 text-[11px] mb-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                  Forensic Examiner Registration:
+                  <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
+                  New Examiner Registration:
                 </div>
                 <p className="text-[10.5px] text-slate-300 leading-relaxed">
-                  Register your official Examiner ID &amp; Sequence Key to create and audit forensic cases permanently in the backend repository.
+                  Create your own Examiner ID and password to access the DVRX forensic dashboard and manage cases.
                 </p>
               </div>
             )}
@@ -646,7 +588,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
                 type="text"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                placeholder={authMode === 'signup' ? 'e.g. EXAMINER-CYBER-07' : 'EXAMINER-DVRX-01'}
+                placeholder={authMode === 'signup' ? 'Choose User ID (e.g. OFFICER-01)' : 'Enter Examiner ID / Username'}
                 required
               />
             </div>
@@ -663,7 +605,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Insp. Rajesh Sharma"
+                    placeholder="e.g. Insp. Vikram Sharma"
                     required
                   />
                 </div>
@@ -677,7 +619,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
                     type="text"
                     value={agency}
                     onChange={(e) => setAgency(e.target.value)}
-                    placeholder="e.g. Delhi Police Cyber Crime Unit (IFSO)"
+                    placeholder="e.g. Cyber Crime Unit / CBI"
                     required
                   />
                 </div>
@@ -689,7 +631,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
               <div className="flex items-center justify-between mb-2">
                 <label className="!mb-0">
                   <KeyRound className="w-3 h-3 text-orange-400" />
-                  Cryptographic Sequence Key / Password
+                  Sequence Key / Password
                 </label>
                 <button
                   type="button"
@@ -704,7 +646,7 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
                 type={showPassword ? 'text' : 'password'}
                 value={sequenceKey}
                 onChange={(e) => setSequenceKey(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Enter password"
                 required
               />
             </div>
@@ -714,13 +656,13 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
               <div className="form-group">
                 <label>
                   <Lock className="w-3 h-3 text-orange-400" />
-                  Confirm Sequence Key
+                  Confirm Password
                 </label>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={confirmKey}
                   onChange={(e) => setConfirmKey(e.target.value)}
-                  placeholder="Repeat sequence key"
+                  placeholder="Repeat password"
                   required
                 />
               </div>
@@ -729,37 +671,42 @@ export const MercuryLogin: React.FC<MercuryLoginProps> = ({
             <div className="submit-wrap">
               <button type="submit" className="btn-base" disabled={isSubmitting}>
                 {isSubmitting
-                  ? (authMode === 'signup' ? 'Registering Examiner...' : 'Authenticating Terminal...')
-                  : (authMode === 'signup' ? 'Create Account & Authorize' : 'Initialize Forensic Stream')}
+                  ? (authMode === 'signup' ? 'Registering Account...' : 'Authenticating...')
+                  : (authMode === 'signup' ? 'Create Account & Sign In' : 'Sign In to Forensic Terminal')}
               </button>
             </div>
 
-            {/* Switch Mode Helper Link */}
-            <div className="mt-4 text-center">
-              {authMode === 'login' ? (
+            {/* Prominent Action Callout to Switch / Create New Account */}
+            {authMode === 'login' ? (
+              <div className="mt-5 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/25 text-center font-mono">
+                <p className="text-[11px] text-slate-300 mb-2">New forensic investigator or examiner?</p>
                 <button
                   type="button"
                   onClick={() => handleModeSwitch('signup')}
-                  className="text-xs font-mono text-orange-400 hover:text-orange-300 underline underline-offset-4 cursor-pointer transition-colors"
+                  className="w-full py-2.5 px-4 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 border border-orange-500/40 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow"
                 >
-                  New forensic user? Create an account / Sign up
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Create New User / Sign Up Here</span>
                 </button>
-              ) : (
+              </div>
+            ) : (
+              <div className="mt-5 p-4 rounded-2xl bg-white/5 border border-white/10 text-center font-mono">
+                <p className="text-[11px] text-slate-400 mb-2">Already have an examiner account?</p>
                 <button
                   type="button"
                   onClick={() => handleModeSwitch('login')}
-                  className="text-xs font-mono text-slate-400 hover:text-white underline underline-offset-4 cursor-pointer transition-colors"
+                  className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 border border-white/20 text-xs font-bold cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow"
                 >
-                  Already registered? Switch to Terminal Login
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Switch to Terminal Sign In</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </form>
         )}
 
         <footer className="footer-nav">
-          <Link href="/#custody">CUSTODY LEDGER AUDIT</Link>
-          <Link href="/#cases">ACTIVE CASE REPOSITORY</Link>
+          DVRX SECURE PLATFORM · ELECTRONIC EVIDENCE REPOSITORY
         </footer>
       </main>
     </div>

@@ -234,6 +234,7 @@ export default function ForensicApp() {
 
   // Examiner Authentication & Authorization State
   const [currentExaminer, setCurrentExaminer] = useState<{ user_id: string; name: string; agency: string } | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState<boolean>(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // New Case Modal State
@@ -365,6 +366,7 @@ export default function ForensicApp() {
           const parsed = JSON.parse(raw);
           if (parsed && parsed.user_id) {
             setCurrentExaminer(parsed);
+            setIsAuthChecking(false);
             return;
           }
         }
@@ -372,6 +374,11 @@ export default function ForensicApp() {
         console.warn('Failed to parse examiner session', e);
       }
       setCurrentExaminer(null);
+      setIsAuthChecking(false);
+      // First open login page: unauthenticated visitors are automatically routed to /login
+      if (typeof window !== 'undefined') {
+        window.location.replace('/login');
+      }
     };
 
     loadExaminerSession();
@@ -389,6 +396,9 @@ export default function ForensicApp() {
     } catch {}
     setCurrentExaminer(null);
     window.dispatchEvent(new Event('dvrx_auth_change'));
+    if (typeof window !== 'undefined') {
+      window.location.replace('/login');
+    }
   };
 
   const handleOpenNewCaseModal = () => {
@@ -753,6 +763,22 @@ export default function ForensicApp() {
   const scrollToCases = () => {
     document.getElementById('cases')?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  if (isAuthChecking || !currentExaminer) {
+    return (
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center p-6 text-slate-100 font-mono">
+        <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mb-4 text-orange-400 shadow-[0_0_30px_rgba(249,115,22,0.2)] animate-pulse">
+          <ShieldCheck className="w-7 h-7" />
+        </div>
+        <p className="text-sm font-bold tracking-widest text-white uppercase mb-1">
+          DVRX Forensic Platform
+        </p>
+        <p className="text-xs text-slate-400 animate-pulse">
+          Security Verification Required · Redirecting to Terminal Login Gateway...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-[#030712] text-slate-100 selection:bg-orange-500/30 selection:text-orange-200 overflow-x-hidden">
