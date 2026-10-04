@@ -38,6 +38,9 @@ import {
   PlayCircle,
   Film,
   AlertCircle,
+  Image as ImageIcon,
+  Maximize2,
+  Download,
 } from 'lucide-react';
 
 interface CaseSummary {
@@ -74,6 +77,9 @@ interface CaseDetail {
     tz_offset: string;
     examiner: string;
     notes: string;
+    preview_data_url?: string;
+    is_image?: boolean;
+    file_type?: string;
   }>;
   custody: {
     is_valid: boolean;
@@ -225,7 +231,7 @@ const INDIAN_SOLVED_CASES = [
 
 export default function ForensicApp() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
-  const [selectedCaseId, setSelectedCaseId] = useState<string>('CASE-CYBER-DEL-2022-AIIMS');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
   const [caseFilter, setCaseFilter] = useState<'all' | 'cyber' | 'surveillance' | 'indian' | 'lab'>('all');
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -253,6 +259,7 @@ export default function ForensicApp() {
   const [showAcquire, setShowAcquire] = useState(false);
   const [acquireMode, setAcquireMode] = useState<'upload' | 'sample' | 'path'>('upload');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(null);
   const [sourcePath, setSourcePath] = useState('');
   const [acqExaminer, setAcqExaminer] = useState('');
   const [acqNotes, setAcqNotes] = useState('');
@@ -262,10 +269,45 @@ export default function ForensicApp() {
   const [inspectModalOpen, setInspectModalOpen] = useState(false);
   const [inspectData, setInspectData] = useState<any>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
-  const [inspectTab, setInspectTab] = useState<'hex' | 'header' | 'vendor' | 'cert' | 'custody'>('vendor');
+  const [inspectTab, setInspectTab] = useState<'hex' | 'header' | 'vendor' | 'cert' | 'custody' | 'image'>('vendor');
   const [selectedVendorOverride, setSelectedVendorOverride] = useState<string | null>(null);
   const [vendorAnalyzing, setVendorAnalyzing] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Full-Screen Image Evidence Lightbox Modal State
+  const [previewImageModal, setPreviewImageModal] = useState<{
+    url: string;
+    title: string;
+    evidence_id: string;
+    case_id: string;
+    file_size: number;
+    sha256: string;
+    md5: string;
+    examiner: string;
+    notes?: string;
+  } | null>(null);
+
+  const isImageEvidence = (ev: any) => {
+    if (!ev) return false;
+    if (ev.is_image) return true;
+    if (ev.preview_data_url) return true;
+    const path = (ev.source_path || '').toLowerCase();
+    return (
+      path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.webp') ||
+      path.endsWith('.gif') ||
+      path.endsWith('.bmp') ||
+      path.endsWith('.svg')
+    );
+  };
+
+  const getImageSrc = (ev: any) => {
+    if (!ev) return '';
+    if (ev.preview_data_url) return ev.preview_data_url;
+    return ev.source_path || '';
+  };
 
   const isCyberCase = (c: CaseSummary | string) => {
     const id = typeof c === 'string' ? c : c?.case_id || '';
@@ -313,27 +355,33 @@ export default function ForensicApp() {
     );
   };
 
-  const filteredCases = cases.filter((c) => {
-    // If search query is active, check matching fields
-    if (caseSearchQuery.trim()) {
-      const q = caseSearchQuery.toLowerCase().trim();
-      const matchId = (c.case_id || '').toLowerCase().includes(q);
-      const matchExaminer = (c.examiner || '').toLowerCase().includes(q);
-      const matchNotes = (c.notes || '').toLowerCase().includes(q);
-      if (!matchId && !matchExaminer && !matchNotes) {
-        return false;
+  const filteredCases = cases
+    .filter((c) => {
+      // If search query is active, check matching fields
+      if (caseSearchQuery.trim()) {
+        const q = caseSearchQuery.toLowerCase().trim();
+        const matchId = (c.case_id || '').toLowerCase().includes(q);
+        const matchExaminer = (c.examiner || '').toLowerCase().includes(q);
+        const matchNotes = (c.notes || '').toLowerCase().includes(q);
+        if (!matchId && !matchExaminer && !matchNotes) {
+          return false;
+        }
+      } else {
+        // Crucial: The currently selected case is always visible so newly added cases never disappear
+        if (c.case_id === selectedCaseId) return true;
       }
-    } else {
-      // Crucial: The currently selected case is always visible so newly added cases never disappear
-      if (c.case_id === selectedCaseId) return true;
-    }
 
-    if (caseFilter === 'cyber') return isCyberCase(c);
-    if (caseFilter === 'surveillance') return !isCyberCase(c);
-    if (caseFilter === 'indian') return isIndianCase(c.case_id);
-    if (caseFilter === 'lab') return !isIndianCase(c.case_id);
-    return true;
-  });
+      if (caseFilter === 'cyber') return isCyberCase(c);
+      if (caseFilter === 'surveillance') return !isCyberCase(c);
+      if (caseFilter === 'indian') return isIndianCase(c.case_id);
+      if (caseFilter === 'lab') return !isIndianCase(c.case_id);
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = a.created_utc ? new Date(a.created_utc).getTime() : 0;
+      const timeB = b.created_utc ? new Date(b.created_utc).getTime() : 0;
+      return timeB - timeA;
+    });
 
   // When search query changes, auto-select first matching case
   useEffect(() => {
@@ -350,17 +398,22 @@ export default function ForensicApp() {
     }
   }, [caseSearchQuery, cases]);
 
-  // Load Cases
+  // Load Cases (Recent cases first)
   const fetchCases = async () => {
     try {
       const res = await fetch('/api/dvrx');
       const data = await res.json();
       if (data.status === 'ok' && data.cases) {
-        setCases(data.cases);
-        if (!selectedCaseId && data.cases.length > 0) {
-          const indianFirst = data.cases.find((c: any) => isIndianCase(c.case_id));
-          setSelectedCaseId(indianFirst ? indianFirst.case_id : data.cases[0].case_id);
-        }
+        const sorted = [...data.cases].sort((a: any, b: any) => {
+          const timeA = a.created_utc ? new Date(a.created_utc).getTime() : 0;
+          const timeB = b.created_utc ? new Date(b.created_utc).getTime() : 0;
+          return timeB - timeA;
+        });
+        setCases(sorted);
+        setSelectedCaseId((prev) => {
+          if (prev && sorted.some((c: any) => c.case_id === prev)) return prev;
+          return sorted.length > 0 ? sorted[0].case_id : '';
+        });
       }
     } catch (e) {
       console.error('Failed to fetch cases', e);
@@ -676,14 +729,21 @@ export default function ForensicApp() {
       const data = await res.json();
       if (data.status === 'ok') {
         const cert = data.inspection?.section_65b_certificate || data.certificate_65b || {};
+        const matchingEv = activeCase?.evidence?.find((e) => e.evidence_id === targetEvd);
+        const previewUrl = data.evidence?.preview_data_url || data.inspection?.preview_data_url || matchingEv?.preview_data_url;
+        const isImg = Boolean(data.evidence?.is_image || data.inspection?.is_image || matchingEv?.is_image || previewUrl || isImageEvidence(data.evidence || matchingEv));
+
         const insp = {
           case_id: data.inspection?.case_id || data.evidence?.case_id || caseId,
           evidence_id: data.inspection?.evidence_id || data.evidence?.evidence_id || targetEvd,
-          file_path: data.inspection?.file_path || data.evidence?.source_path,
-          file_size: data.inspection?.file_size || data.evidence?.file_size || 0,
+          file_path: data.inspection?.file_path || data.evidence?.source_path || matchingEv?.source_path,
+          file_size: data.inspection?.file_size || data.evidence?.file_size || matchingEv?.file_size || 0,
           bytes_inspected: data.inspection?.bytes_inspected || (data.hex_dump?.length ? data.hex_dump.length * 16 : 512),
-          sha256: data.inspection?.sha256 || data.evidence?.sha256,
-          md5: data.inspection?.md5 || data.evidence?.md5,
+          sha256: data.inspection?.sha256 || data.evidence?.sha256 || matchingEv?.sha256,
+          md5: data.inspection?.md5 || data.evidence?.md5 || matchingEv?.md5,
+          preview_data_url: previewUrl,
+          is_image: isImg,
+          file_type: data.evidence?.file_type || data.inspection?.file_type || matchingEv?.file_type,
           hex_dump: data.inspection?.hex_dump || data.hex_dump || [],
           text_header: data.inspection?.text_header || data.text_header || '',
           nal_units: data.inspection?.nal_units || data.nal_units || [],
@@ -708,6 +768,9 @@ export default function ForensicApp() {
           custody_events: data.inspection?.custody_events || data.custody_entries || [],
         };
         setInspectData(insp);
+        if (isImg && previewUrl && !initialTab) {
+          setInspectTab('image');
+        }
       } else {
         alert(data.message || 'Evidence stream inspection failed: evidence file not found');
         setInspectModalOpen(false);
@@ -760,6 +823,7 @@ export default function ForensicApp() {
         setShowAcquire(false);
         setInspectModalOpen(false);
         setShowAuthModal(false);
+        setPreviewImageModal(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1269,6 +1333,112 @@ export default function ForensicApp() {
                   </div>
                 )}
 
+                {/* Uploaded Photographic & CCTV Image Evidence Gallery */}
+                {activeCase.evidence && activeCase.evidence.some(isImageEvidence) && (
+                  <div className="mt-5 p-5 rounded-3xl bg-black/40 border border-orange-500/20 backdrop-blur-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-orange-400" />
+                        <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                          Photographic &amp; Video Evidence Gallery ({activeCase.evidence.filter(isImageEvidence).length})
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Forensically Sealed Previews
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                      {activeCase.evidence.filter(isImageEvidence).map((ev) => {
+                        const imgSrc = getImageSrc(ev);
+                        const fileName = ev.source_path.split(/[/\\]/).pop() || ev.evidence_id;
+                        return (
+                          <div
+                            key={ev.evidence_id}
+                            className="group relative rounded-2xl overflow-hidden bg-black/60 border border-white/10 hover:border-orange-500/50 transition-all shadow-lg flex flex-col"
+                          >
+                            {/* Image Thumbnail Container */}
+                            <div
+                              className="relative aspect-video w-full bg-slate-950 overflow-hidden cursor-pointer"
+                              onClick={() => {
+                                setPreviewImageModal({
+                                  url: imgSrc,
+                                  title: fileName,
+                                  evidence_id: ev.evidence_id,
+                                  case_id: activeCase.case.case_id,
+                                  file_size: ev.file_size,
+                                  sha256: ev.sha256,
+                                  md5: ev.md5,
+                                  examiner: ev.examiner,
+                                  notes: ev.notes,
+                                });
+                              }}
+                            >
+                              <img
+                                src={imgSrc}
+                                alt={ev.evidence_id}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span className="px-3 py-1.5 rounded-xl bg-orange-500 text-black font-bold text-xs flex items-center gap-1.5 shadow-lg">
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                  View Full Size
+                                </span>
+                              </div>
+                              <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono text-orange-300 border border-white/10">
+                                {ev.evidence_id}
+                              </div>
+                            </div>
+
+                            {/* Evidence Info Card */}
+                            <div className="p-3 text-xs font-mono space-y-1.5 flex-1 flex flex-col justify-between">
+                              <div>
+                                <p className="text-white font-semibold truncate text-[11px]" title={ev.source_path}>
+                                  {fileName}
+                                </p>
+                                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5">
+                                  <span>{(ev.file_size / 1024).toFixed(1)} KB</span>
+                                  <span className="text-emerald-400 font-semibold">Sec 65B Certified</span>
+                                </div>
+                              </div>
+                              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewImageModal({
+                                      url: imgSrc,
+                                      title: fileName,
+                                      evidence_id: ev.evidence_id,
+                                      case_id: activeCase.case.case_id,
+                                      file_size: ev.file_size,
+                                      sha256: ev.sha256,
+                                      md5: ev.md5,
+                                      examiner: ev.examiner,
+                                      notes: ev.notes,
+                                    });
+                                  }}
+                                  className="text-[11px] text-orange-400 hover:text-orange-300 font-semibold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  Inspect Image
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleInspectEvidence(activeCase.case.case_id, ev.evidence_id)}
+                                  className="text-[10px] text-slate-400 hover:text-white cursor-pointer"
+                                >
+                                  Raw Stream
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Evidence List Table */}
                 <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md">
                   {(activeCase.evidence || []).length === 0 ? (
@@ -1280,6 +1450,7 @@ export default function ForensicApp() {
                       <thead>
                         <tr className="border-b border-white/10 text-slate-300 text-[10px] uppercase bg-white/[0.02]">
                           <th className="py-3 px-4">EVD ID</th>
+                          <th className="py-3 px-4">Visual Preview</th>
                           <th className="py-3 px-4">File Size</th>
                           <th className="py-3 px-4">SHA-256 Digest</th>
                           <th className="py-3 px-4">MD5 Digest</th>
@@ -1288,28 +1459,65 @@ export default function ForensicApp() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 text-slate-300">
-                        {(activeCase.evidence || []).map((ev) => (
-                          <tr key={ev.evidence_id} className="hover:bg-white/[0.04] transition-colors">
-                            <td className="py-3 px-4 font-semibold text-orange-400">{ev.evidence_id}</td>
-                            <td className="py-3 px-4">{ev.file_size.toLocaleString()} B</td>
-                            <td className="py-3 px-4 font-mono text-[11px] text-slate-200 max-w-xs truncate" title={ev.sha256}>
-                              {ev.sha256}
-                            </td>
-                            <td className="py-3 px-4 text-[11px] text-slate-400">{ev.md5}</td>
-                            <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={ev.source_path}>
-                              {ev.source_path}
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <button
-                                onClick={() => handleInspectEvidence(activeCase.case.case_id, ev.evidence_id)}
-                                className="px-3 py-1.5 rounded-xl liquid-glass-button text-black text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow hover:scale-105 transition-all"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                                Inspect
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {(activeCase.evidence || []).map((ev) => {
+                          const isImg = isImageEvidence(ev);
+                          const imgSrc = isImg ? getImageSrc(ev) : null;
+                          const fileName = ev.source_path.split(/[/\\]/).pop() || ev.evidence_id;
+                          return (
+                            <tr key={ev.evidence_id} className="hover:bg-white/[0.04] transition-colors">
+                              <td className="py-3 px-4 font-semibold text-orange-400">{ev.evidence_id}</td>
+                              <td className="py-3 px-4">
+                                {isImg && imgSrc ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPreviewImageModal({
+                                        url: imgSrc,
+                                        title: fileName,
+                                        evidence_id: ev.evidence_id,
+                                        case_id: activeCase.case.case_id,
+                                        file_size: ev.file_size,
+                                        sha256: ev.sha256,
+                                        md5: ev.md5,
+                                        examiner: ev.examiner,
+                                        notes: ev.notes,
+                                      });
+                                    }}
+                                    className="group relative w-12 h-9 rounded-lg overflow-hidden border border-white/20 hover:border-orange-400 block cursor-pointer transition-all shadow"
+                                    title="Click to view image full size"
+                                  >
+                                    <img src={imgSrc} alt="thumb" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                    <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                                      <Eye className="w-3 h-3 text-white drop-shadow opacity-75 group-hover:opacity-100" />
+                                    </div>
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                                    <Binary className="w-3 h-3 text-slate-500" />
+                                    Stream
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">{ev.file_size.toLocaleString()} B</td>
+                              <td className="py-3 px-4 font-mono text-[11px] text-slate-200 max-w-xs truncate" title={ev.sha256}>
+                                {ev.sha256}
+                              </td>
+                              <td className="py-3 px-4 text-[11px] text-slate-400">{ev.md5}</td>
+                              <td className="py-3 px-4 text-slate-400 max-w-xs truncate" title={ev.source_path}>
+                                {ev.source_path}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button
+                                  onClick={() => handleInspectEvidence(activeCase.case.case_id, ev.evidence_id)}
+                                  className="px-3 py-1.5 rounded-xl liquid-glass-button text-black text-[11px] font-semibold inline-flex items-center gap-1.5 cursor-pointer shadow hover:scale-105 transition-all"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  Inspect
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -1806,13 +2014,39 @@ export default function ForensicApp() {
                   <div className="border border-dashed border-white/20 hover:border-orange-400/60 rounded-2xl p-4 text-center bg-black/40 backdrop-blur-md cursor-pointer transition-colors">
                     <input
                       type="file"
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] || null;
+                        setSelectedFile(f);
+                        if (f && (f.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(f.name))) {
+                          const url = URL.createObjectURL(f);
+                          setSelectedFilePreview(url);
+                        } else {
+                          setSelectedFilePreview(null);
+                        }
+                      }}
                       className="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500/20 file:text-orange-300 hover:file:bg-orange-500/30 cursor-pointer"
                     />
                     {selectedFile && (
                       <p className="mt-2 text-[11px] font-mono text-emerald-400">
                         Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
                       </p>
+                    )}
+                    {selectedFilePreview && (
+                      <div className="mt-3 p-2.5 rounded-xl bg-black/60 border border-orange-500/40 flex items-center gap-3 text-left">
+                        <img
+                          src={selectedFilePreview}
+                          alt="Evidence preview"
+                          className="w-16 h-16 object-cover rounded-lg border border-white/20 flex-shrink-0"
+                        />
+                        <div className="text-xs font-mono">
+                          <div className="text-orange-300 font-semibold flex items-center gap-1">
+                            <ImageIcon className="w-3.5 h-3.5 text-orange-400" />
+                            Photographic Evidence Detected
+                          </div>
+                          <div className="text-[11px] text-slate-300 truncate max-w-xs">{selectedFile?.name}</div>
+                          <div className="text-[10px] text-emerald-400">Ready for automated Section 65B hash &amp; visual preview</div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1869,7 +2103,13 @@ export default function ForensicApp() {
               <div className="flex justify-end gap-2.5 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAcquire(false)}
+                  onClick={() => {
+                    setShowAcquire(false);
+                    if (selectedFilePreview) {
+                      URL.revokeObjectURL(selectedFilePreview);
+                      setSelectedFilePreview(null);
+                    }
+                  }}
                   className="px-4 py-2 rounded-xl liquid-glass-secondary-button text-xs text-slate-300 cursor-pointer"
                 >
                   Cancel
@@ -2007,6 +2247,20 @@ export default function ForensicApp() {
 
                 {/* Inspector Tabs Header */}
                 <div className="px-6 pt-3 flex items-center gap-2 border-b border-white/10 overflow-x-auto">
+                  {Boolean(inspectData?.is_image || inspectData?.preview_data_url) && (
+                    <button
+                      onClick={() => setInspectTab('image')}
+                      className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
+                        inspectTab === 'image'
+                          ? 'liquid-glass-accent text-pink-200 border-pink-400/50 font-bold shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-pink-400" />
+                      <span>Photographic Inspection</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setInspectTab('hex')}
                     className={`px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2 transition-all cursor-pointer ${
@@ -2075,6 +2329,65 @@ export default function ForensicApp() {
 
                 {/* Inspector Tab Content Area */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {/* TAB 0: PHOTOGRAPHIC INSPECTION */}
+                  {inspectTab === 'image' && Boolean(inspectData?.is_image || inspectData?.preview_data_url) && (
+                    <div className="space-y-4 font-mono">
+                      <div className="flex items-center justify-between text-xs text-slate-300/90 bg-pink-500/10 border border-pink-500/20 p-3 rounded-2xl">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Forensic Photographic Evidence Visualized</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewImageModal({
+                              url: inspectData.preview_data_url || inspectData.file_path,
+                              title: inspectData.file_path?.split(/[/\\]/).pop() || inspectData.evidence_id,
+                              evidence_id: inspectData.evidence_id,
+                              case_id: inspectData.case_id,
+                              file_size: inspectData.file_size,
+                              sha256: inspectData.sha256,
+                              md5: inspectData.md5,
+                              examiner: inspectData.examiner || currentExaminer?.name || 'Lead Forensic Examiner',
+                            });
+                          }}
+                          className="text-[11px] text-pink-300 hover:text-pink-100 flex items-center gap-1 font-semibold cursor-pointer underline"
+                        >
+                          <Maximize2 className="w-3 h-3" />
+                          View Full-Screen Lightbox
+                        </button>
+                      </div>
+
+                      <div className="relative rounded-2xl overflow-hidden bg-black/90 border border-white/15 flex items-center justify-center p-4 max-h-[440px] shadow-2xl">
+                        <img
+                          src={inspectData.preview_data_url || inspectData.file_path}
+                          alt={inspectData.evidence_id}
+                          className="max-h-[400px] max-w-full object-contain rounded-xl border border-white/10"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1">
+                          <div className="text-slate-400 text-[10px]">Evidence Item ID:</div>
+                          <div className="text-orange-400 font-bold">{inspectData.evidence_id}</div>
+                          <div className="text-slate-400 text-[10px] truncate">{inspectData.file_path}</div>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1">
+                          <div className="text-slate-400 text-[10px]">SHA-256 Digest:</div>
+                          <div className="text-slate-200 font-bold truncate text-[11px]" title={inspectData.sha256}>
+                            {inspectData.sha256}
+                          </div>
+                          <div className="text-emerald-400 text-[10px]">Section 65B Certified</div>
+                        </div>
+                        <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 space-y-1">
+                          <div className="text-slate-400 text-[10px]">File Metrics:</div>
+                          <div className="text-white font-bold">{(inspectData.file_size / 1024).toFixed(1)} KB</div>
+                          <div className="text-slate-400 text-[10px]">MD5: {inspectData.md5}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* TAB 1: HEX DUMP */}
                   {inspectTab === 'hex' && (
                     <div className="space-y-4">
@@ -2534,6 +2847,96 @@ export default function ForensicApp() {
                 </div>
               </>
             ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Photographic Evidence Lightbox Modal */}
+      {previewImageModal && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewImageModal(null);
+          }}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-between p-4 sm:p-6"
+        >
+          {/* Lightbox Header Bar */}
+          <div className="w-full max-w-6xl flex items-center justify-between pb-3 border-b border-white/10 text-xs font-mono">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)]">
+                <ImageIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-white font-bold text-sm flex items-center gap-2">
+                  <span>{previewImageModal.title}</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                    {previewImageModal.evidence_id}
+                  </span>
+                </div>
+                <div className="text-slate-400 text-[11px] mt-0.5">
+                  Case: <span className="text-orange-300 font-semibold">{previewImageModal.case_id}</span> · Examiner: <span className="text-slate-200">{previewImageModal.examiner || currentExaminer?.name || 'Authorized Forensic Examiner'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={previewImageModal.url}
+                download={previewImageModal.title || `${previewImageModal.evidence_id}.png`}
+                className="px-3.5 py-1.5 rounded-xl liquid-glass-secondary-button text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer text-xs transition-all shadow"
+                title="Download original forensic image"
+              >
+                <Download className="w-3.5 h-3.5 text-orange-400" />
+                <span>Download Image</span>
+              </a>
+              <button
+                onClick={() => setPreviewImageModal(null)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
+                title="Close Lightbox (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Lightbox High-Resolution Visual Container */}
+          <div className="flex-1 w-full max-w-6xl flex items-center justify-center p-4 min-h-0 overflow-auto">
+            <img
+              src={previewImageModal.url}
+              alt={previewImageModal.title}
+              className="max-h-[72vh] max-w-full object-contain rounded-2xl border border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.95)]"
+            />
+          </div>
+
+          {/* Lightbox Footer Cryptographic Integrity Seals */}
+          <div className="w-full max-w-6xl p-4 rounded-2xl bg-black/70 border border-white/10 text-xs font-mono flex flex-wrap items-center justify-between gap-3 shadow-2xl">
+            <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-300">
+              <div>
+                Size: <span className="text-white font-bold">{(previewImageModal.file_size / 1024).toFixed(1)} KB</span> ({previewImageModal.file_size?.toLocaleString()} B)
+              </div>
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <span>SHA-256:</span>
+                <span className="text-orange-300 font-bold max-w-[220px] sm:max-w-md truncate" title={previewImageModal.sha256}>
+                  {previewImageModal.sha256}
+                </span>
+                <button
+                  onClick={() => copyToClipboard(previewImageModal.sha256, 'modal_lightbox_sha')}
+                  className="text-slate-400 hover:text-white cursor-pointer ml-1"
+                  title="Copy SHA-256 Seal"
+                >
+                  {copiedField === 'modal_lightbox_sha' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+              <div className="text-slate-400">
+                MD5: <span className="text-slate-200">{previewImageModal.md5}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1 font-semibold">
+                <BadgeCheck className="w-3.5 h-3.5 text-emerald-400" />
+                Section 65B Certified Forensic Item
+              </span>
+            </div>
           </div>
         </div>
       )}

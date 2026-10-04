@@ -251,6 +251,9 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
       file_size: payload.file_size,
       md5: payload.md5,
       sha256: payload.sha256,
+      preview_data_url: payload.preview_data_url,
+      is_image: payload.is_image,
+      file_type: payload.file_type,
     });
     return {
       status: 'ok',
@@ -286,7 +289,22 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
     const vendorAnalysis = generateFallbackVendorAnalysis(selectedVendor);
     const targetCase = getCaseById(cId);
 
-    const targetEv = targetCase?.evidence?.find((e) => e.evidence_id === evId) || {
+    const targetEv: {
+      evidence_id: string;
+      case_id: string;
+      source_path: string;
+      file_size: number;
+      md5: string;
+      sha256: string;
+      acquired_utc: string;
+      acquired_raw: string;
+      tz_offset: string;
+      examiner: string;
+      notes: string;
+      preview_data_url?: string;
+      is_image?: boolean;
+      file_type?: string;
+    } = targetCase?.evidence?.find((e) => e.evidence_id === evId) || {
       evidence_id: evId,
       case_id: cId,
       source_path: `/cyber_vault/${cId}/${evId}_stream.dd`,
@@ -298,6 +316,9 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
       tz_offset: '+05:30',
       examiner: targetCase?.examiner || 'Lead Digital Forensics Examiner',
       notes: targetCase?.notes || 'Forensic electronic evidence bitstream',
+      preview_data_url: undefined,
+      is_image: false,
+      file_type: undefined,
     };
 
     const isCyber = targetCase?.case_type === 'cyber_crime' || cId.toUpperCase().includes('CYBER');
@@ -428,6 +449,9 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
         bytes_inspected: 512,
         sha256: targetEv.sha256 || '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
         md5: targetEv.md5 || '8b1a9953c4611296a827abf8c47804d7',
+        preview_data_url: targetEv.preview_data_url,
+        is_image: targetEv.is_image,
+        file_type: targetEv.file_type,
         hex_dump: hexDump,
         text_header: isCyber
           ? 'SECUREX_CYBER_CRIME_INCIDENT_STREAM_CONTAINER_V1\nINCIDENT_TYPE: RANSOMWARE_SERVER_BREACH\nEXTRACTOR: VOLATILITY_MEMORY_FORENSICS\n---BEGIN_RAW_STREAM_BLOCK---'

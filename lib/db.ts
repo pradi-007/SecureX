@@ -32,6 +32,9 @@ export interface ForensicCaseRecord {
     tz_offset: string;
     examiner: string;
     notes: string;
+    preview_data_url?: string;
+    is_image?: boolean;
+    file_type?: string;
   }>;
   custody?: {
     is_valid: boolean;
@@ -126,7 +129,12 @@ function persistStore(): void {
  */
 export function getAllCases(): ForensicCaseRecord[] {
   const store = loadStore();
-  return store.cases;
+  // Ensure recent cases are always first
+  return [...store.cases].sort((a, b) => {
+    const timeA = new Date(a.created_utc || 0).getTime();
+    const timeB = new Date(b.created_utc || 0).getTime();
+    return timeB - timeA;
+  });
 }
 
 /**
@@ -229,6 +237,9 @@ export function addEvidenceToCase(
     file_size?: number;
     md5?: string;
     sha256?: string;
+    preview_data_url?: string;
+    is_image?: boolean;
+    file_type?: string;
   }
 ) {
   const store = loadStore();
@@ -259,10 +270,13 @@ export function addEvidenceToCase(
     tz_offset: '+05:30',
     examiner: evidenceData.examiner || targetCase.examiner,
     notes: evidenceData.notes || 'Forensically sealed evidence bitstream',
+    preview_data_url: evidenceData.preview_data_url,
+    is_image: evidenceData.is_image,
+    file_type: evidenceData.file_type,
   };
 
   if (!targetCase.evidence) targetCase.evidence = [];
-  targetCase.evidence.push(evRecord);
+  targetCase.evidence.unshift(evRecord); // Recent evidence first
   targetCase.evidence_count = targetCase.evidence.length;
 
   if (!targetCase.custody) {
