@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export interface ForensicCaseRecord {
   case_id: string;
@@ -53,6 +54,7 @@ export interface ForensicCaseRecord {
 }
 
 const DB_FILE_PATH = path.resolve(process.cwd(), 'data', 'forensic_cases.json');
+const TMP_DB_PATH = path.join(os.tmpdir(), 'securex-data', 'forensic_cases.json');
 
 // In-memory cache to ensure speed and seamless operation even in read-only / serverless runtimes
 let memoryStore: { version: string; updated_at: string; cases: ForensicCaseRecord[] } | null = null;
@@ -62,6 +64,16 @@ function loadStore(): { version: string; updated_at: string; cases: ForensicCase
     return memoryStore;
   }
 
+  // 1. Check if temporary writable DB has updates in serverless environment
+  try {
+    if (fs.existsSync(TMP_DB_PATH)) {
+      const raw = fs.readFileSync(TMP_DB_PATH, 'utf-8');
+      memoryStore = JSON.parse(raw);
+      return memoryStore!;
+    }
+  } catch {}
+
+  // 2. Read bundled database file from repository root
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
@@ -85,15 +97,27 @@ function persistStore(): void {
   if (!memoryStore) return;
   memoryStore.updated_at = new Date().toISOString();
 
+  // Try writing to primary DB_FILE_PATH (works in local dev / persistent disk)
   try {
     const dataDir = path.dirname(DB_FILE_PATH);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     fs.writeFileSync(DB_FILE_PATH, JSON.stringify(memoryStore, null, 2), 'utf-8');
+    return;
   } catch (err) {
-    // In serverless / read-only production filesystems, writing to disk may be restricted
-    console.warn('[SecureX DB] Disk write not permitted (serverless/read-only), maintained in memory store:', err);
+    // In serverless / read-only production filesystems (e.g. /var/task on Vercel), writing to repo root is read-only
+  }
+
+  // Fallback to writable temporary filesystem (/tmp on Vercel/Lambda)
+  try {
+    const tmpDataDir = path.dirname(TMP_DB_PATH);
+    if (!fs.existsSync(tmpDataDir)) {
+      fs.mkdirSync(tmpDataDir, { recursive: true });
+    }
+    fs.writeFileSync(TMP_DB_PATH, JSON.stringify(memoryStore, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[SecureX DB] Maintained in memory store:', err);
   }
 }
 

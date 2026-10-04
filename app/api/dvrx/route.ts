@@ -75,8 +75,9 @@ export async function POST(req: NextRequest) {
     } else if (action === 'generate_sample_evidence') {
       const fs = await import('fs/promises');
       const path = await import('path');
-      const evidenceDir = path.resolve(process.cwd(), 'evidence');
-      await fs.mkdir(evidenceDir, { recursive: true });
+      const crypto = await import('crypto');
+      const { getWritableEvidenceDirectory } = await import('@/lib/storage');
+      const evidenceDir = getWritableEvidenceDirectory();
       const filename = `cctv_ch1_${Date.now()}.dd`;
       const filePath = path.join(evidenceDir, filename);
       const headerBlock = Buffer.from(
@@ -98,13 +99,23 @@ export async function POST(req: NextRequest) {
       for (let offset = block.length; offset < fullBuffer.length; offset += nalUnits.length) {
         nalUnits.copy(fullBuffer, offset, 0, Math.min(nalUnits.length, fullBuffer.length - offset));
       }
-      await fs.writeFile(filePath, fullBuffer);
+      const md5Digest = crypto.createHash('md5').update(fullBuffer).digest('hex');
+      const sha256Digest = crypto.createHash('sha256').update(fullBuffer).digest('hex');
+
+      try {
+        await fs.writeFile(filePath, fullBuffer);
+      } catch (writeError) {
+        console.warn('[DVRX Storage] Sample bitstream disk write notice:', writeError);
+      }
 
       const data = await runDvrxBridge('acquire_evidence', {
         case_id: body.case_id,
         source_path: filePath,
         examiner: body.examiner,
         notes: body.notes || `Generated synthetic surveillance sample (${filename})`,
+        file_size: fullBuffer.length,
+        md5: md5Digest,
+        sha256: sha256Digest,
       });
       return NextResponse.json(data);
     } else if (action === 'analyze_vendor') {

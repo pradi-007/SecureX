@@ -248,6 +248,9 @@ function handleVercelFallback(command: string, payload: Record<string, any> = {}
       source_path: payload.source_path,
       examiner: payload.examiner,
       notes: payload.notes,
+      file_size: payload.file_size,
+      md5: payload.md5,
+      sha256: payload.sha256,
     });
     return {
       status: 'ok',
